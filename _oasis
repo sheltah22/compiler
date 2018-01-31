@@ -1,0 +1,32 @@
+Name: Compiler
+Version: 0.1
+Synopsis: A compiler for a toy programming language
+Authors: Shelby Frazier
+License: MIT
+
+OASISFormat: 0.4
+BuildTools: ocamlbuild
+Plugins: META (0.4), DevFiles (0.4)
+
+Executable "compiler"
+  Path: src
+  MainIs: compiler.ml
+  CompiledObject: best
+  BuildDepends:
+
+Test "test_compiler_1"
+  TestTools: compiler
+  Command: $compiler input1 input2 more even-more | diff test-1.out -
+
+Test "test_compiler_2"
+  TestTools: compiler
+  Command: $compiler | diff test-2.out -
+
+Test "test_length_1"
+  TestTools: compiler
+  Command: $compiler -length o tw thr four| diff test-length-1.out -
+
+Test "test_length_2"
+  TestTools: compiler
+  Command: $compiler -length | diff test-length-2.out -
+
