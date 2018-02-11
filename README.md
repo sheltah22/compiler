@@ -17,6 +17,17 @@ Run `make clean` to clean up the directory (if necessary), and run `make` to bui
 The compiler can be run using `./compiler.native`.
 
 ## Changelog
+#### Assignment 2
+1. New Features
+  - `./compiler.native <file.arith>` can be used to compile and print the result computed by a program using an S-expression language with the following syntax:
+  - e ::= n | (+ e1 e2) | (- e1 e2) | (* e1 e2) | (/ e1 e2)
+        | true | false | (<= e1 e2) | (if e1 e2 e3)
+2. Changes to existing features
+  - No longer prints command line arguments, or uses -length flag to print length of command line arguments
+3. Known Bugs
+  [No known bugs]
+
+
 #### Assignment 1
 1. New Features
   - `./compiler.native` will print any command line arguments given by the user, one per line.
