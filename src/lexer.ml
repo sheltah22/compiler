@@ -48,6 +48,31 @@ let is_wsp c =
   let code = Char.code c in
   (List.mem code [9; 10; 11; 12; 13; 32])
 
+
+(* Copied from Matthias Braun at https://stackoverflow.com/questions/9863036/ocaml-function-parameter-pattern-matching-for-strings *)
+let explode str =
+  let rec explode_inner cur_index chars =
+    if (cur_index < String.length str) then
+      let new_char = str.[cur_index] in
+      explode_inner (cur_index + 1) (chars @ [new_char])
+    else chars in
+  explode_inner 0 []
+
+let rec implode chars =
+  match chars with
+    | [] -> ""
+    | h :: t -> (Char.escaped h) ^ (implode t)
+(* End copied portion *)
+
+let string_of_token_list (tlist: token list) : string =
+  let rec process_token (so_far: string) (remaining: token list) : string =
+    match remaining with
+    | [] -> so_far ^ ""
+    | t :: rest -> process_token (so_far ^ (string_of_token t ) ^ ", ") rest
+  in match explode (process_token "[" tlist) with
+     | '[' :: [] -> "[]"
+     | tstring -> (String.sub (implode tstring) 0 ((String.length (implode tstring)) - 2)) ^ "]"
+
 let lex_file (filename: string) : token list =
   let infile = open_in filename in
   let rec consume remaining =

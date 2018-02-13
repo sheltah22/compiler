@@ -40,6 +40,31 @@ let tern_op_of_tok (t: token) : ternary_op =
   | TIf -> OIf
   | _ -> failwith("Not a ternary operator, given: " ^ (string_of_token t))
 
+let string_of_bin_op (b: binary_op) : string =
+  match b with
+  | OAdd -> "+"
+  | OSubtract -> "-"
+  | OMultiply -> "*"
+  | ODivide -> "/"
+  | OLessThanEq -> "<="
+
+let string_of_tern_op (t: ternary_op) : string =
+  match t with
+  | OIf -> "if"
+
+let string_of_exp (tree: ast) : string =
+  let rec process_exp (e: expr) : string =
+    match e with
+    | ELit (LInt i) -> string_of_int i
+    | ELit (LBool b) -> string_of_bool b
+    | EBinOp (op, expr1, expr2) ->
+      "(" ^ (string_of_bin_op op) ^ " " ^ (process_exp expr1) ^ " " ^ (process_exp expr2) ^ ")"
+    | ETernOp (op, expr1, expr2, expr3) ->
+      "(" ^ (string_of_tern_op op) ^ " " ^ (process_exp expr1) ^ " " ^ (process_exp expr2) ^ " " ^ (process_exp expr3) ^ ")"
+  in
+  match tree with
+  | Root a -> process_exp a
+
 let consume_tok (tlist: token list) (t: token) (*: bool, token list*) =
   if (length tlist) = 0
   then failwith ("Syntax error, missing a " ^ (string_of_token t))

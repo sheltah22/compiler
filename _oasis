@@ -33,3 +33,44 @@ Test "test-if-outer"
 Test "test-if-inner"
   TestTools: compiler
   Command: $compiler test-4.arith | diff test-4.out -
+
+Test "test-plus-lex"
+  TestTools: compiler
+  Command: $compiler -lex test-1.arith | diff test-1.lex.out -
+
+Test "test-arith-lex"
+  TestTools: compiler
+  Command: $compiler -lex test-2.arith | diff test-2.lex.out -
+
+Test "test-if-outer-lex"
+  TestTools: compiler
+  Command: $compiler -lex test-3.arith | diff test-3.lex.out -
+
+Test "test-if-inner-lex"
+  TestTools: compiler
+  Command: $compiler -lex test-4.arith | diff test-4.lex.out -
+
+Test "test-blank-lex"
+  TestTools: compiler
+  Command: $compiler -lex test-5.arith | diff test-5.lex.out -
+
+Test "test-extra-lex"
+  TestTools: compiler
+  Command: $compiler -lex test-6.arith | diff test-6.lex.out -
+
+Test "test-plus-parse"
+  TestTools: compiler
+  Command: $compiler -parse test-1.arith | diff test-1.parse.out -
+
+Test "test-arith-parse"
+  TestTools: compiler
+  Command: $compiler -parse test-2.arith | diff test-2.parse.out -
+
+Test "test-if-outer-parse"
+  TestTools: compiler
+  Command: $compiler -parse test-3.arith | diff test-3.parse.out -
+
+Test "test-if-inner-parse"
+  TestTools: compiler
+  Command: $compiler -parse test-4.arith | diff test-4.parse.out -
+
