@@ -18,6 +18,21 @@ Run `make clean` to clean up the directory (if necessary), and run `make` to bui
 The compiler can be run using `./compiler.native`.
 
 ## Changelog
+
+#### Assignment 3
+1. New Features
+  - if statements now have lazy execution
+2. Changes to existing features
+  - All binary operators are now infix operators
+  - Changed `if` statement syntax to include `then` and `else` keywords
+  - e ::= e1 + e1 | e1 - e2 | e1 * e2 | e1 / e2
+      | e1 <= e2 | if e1 then e2 else e3 | e_base
+  - e_base ::= n | true | false | (exp)
+  - Precedence of operators:
+    + Parenthesized expressions
+    + All binary operations **(right associative)
+    + Conditionals
+
 #### Assignment 2
 1. New Features
   - `./compiler.native <file.arith>` can be used to compile and print the result computed by a program using an S-expression language with the following syntax:
@@ -26,7 +41,7 @@ The compiler can be run using `./compiler.native`.
 2. Changes to existing features
   - No longer prints command line arguments, or uses -length flag to print length of command line arguments
 3. Known Bugs
-  [No known bugs]
+  - If statements evaluate all branches before checking conditional
 
 
 #### Assignment 1

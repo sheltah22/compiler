@@ -13,6 +13,8 @@
 %token DIVIDE     (* / *)
 %token LEQ        (* <= *)
 %token IF         (* if *)
+%token THEN       (* then *)
+%token ELSE       (* else *)
 
 %token EOF
 
@@ -21,13 +23,12 @@
 %%
 
 prog:
-  | e=exp EOF                             { e }
+  | e=exp EOF  { e }
 
 exp:
-  | i=INT                                 { ELit (LInt i) }
-  | b=BOOL                                { ELit (LBool b) }
-  | LPAREN op=bin_op e1=exp e2=exp RPAREN { EBinOp (op, e1, e2) }
-  | LPAREN IF e1=exp e2=exp e3=exp RPAREN { EIf (e1, e2, e3) }
+  | e1=base_exp op=bin_op e2=exp       { EBinOp (op, e1, e2) }
+  | IF e1=exp THEN e2=exp ELSE e3=exp  { EIf (e1, e2, e3) }
+  | e=base_exp                         { e }
 
 bin_op:
   | PLUS   { OAdd }
@@ -35,3 +36,8 @@ bin_op:
   | TIMES  { OMultiply }
   | DIVIDE { ODivide }
   | LEQ    { OLessThanEq }
+
+base_exp:
+  | i=INT               { ELit (LInt i) }
+  | b=BOOL              { ELit (LBool b) }
+  | LPAREN e=exp RPAREN {e}

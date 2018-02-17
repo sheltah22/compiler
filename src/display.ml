@@ -13,6 +13,8 @@ let string_of_token (t: token) : string =
   | DIVIDE -> "/"
   | LEQ    -> "<="
   | IF     -> "if"
+  | THEN   -> "then"
+  | ELSE   -> "else"
   | INT i  -> string_of_int i
   | BOOL b -> string_of_bool b
   | EOF    -> ""

@@ -33,6 +33,14 @@ Test "test-if-inner"
   TestTools: compiler
   Command: $compiler test-4.arith | diff test-4.out -
 
+Test "test-if-lazy"
+  TestTools: compiler
+  Command: $compiler test-5.arith | diff test-5.out -
+
+Test "test-plus-parse"
+  TestTools: compiler
+  Command: $compiler -parse test-1.arith | diff test-1.parse.out -
+
 Test "test-arith-parse"
   TestTools: compiler
   Command: $compiler -parse test-2.arith | diff test-2.parse.out -
@@ -45,3 +53,6 @@ Test "test-if-inner-parse"
   TestTools: compiler
   Command: $compiler -parse test-4.arith | diff test-4.parse.out -
 
+Test "test-if-lazy-parse"
+  TestTools: compiler
+  Command: $compiler -parse test-5.arith | diff test-5.parse.out -
