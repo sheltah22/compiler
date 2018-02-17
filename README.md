@@ -8,7 +8,8 @@ This is a compiler for a toy language.
 ### Setup Instructions
 You will need ocaml, opam and oasis installed to run the compiler.
 1. Install ocaml and opam using your preferred package manager.
-2. Then use opam to install oasis using `opam install oasis`
+2. Then use opam to install oasis and menhir using `opam install oasis` and
+   `opam install menhir`.
 
 ### Build Instructions
 Run `make clean` to clean up the directory (if necessary), and run `make` to build the project.

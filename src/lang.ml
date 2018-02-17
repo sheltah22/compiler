@@ -1,95 +1,76 @@
-type binary_op =
-  | OAdd
-	| OSubtract
-	| OMultiply
-	| ODivide
-	| OLessThanEq
-
-type ternary_op =
-  | OIf
-
 type lit =
   | LInt of int
-	| LBool of bool
+  | LBool of bool
 
-type expr =
+type bin_op =
+  | OAdd
+  | OSubtract
+  | OMultiply
+  | ODivide
+  | OLessThanEq
+
+type exp =
   | ELit of lit
-  | EBinOp of binary_op * expr * expr
-  | ETernOp of ternary_op * expr * expr * expr
+  | EBinOp of bin_op * exp * exp
+  | EIf of exp * exp * exp
 
-type ast =
-  | Root of expr
+let typecheck_bin_op exp1 exp2 =
+  match exp1, exp2 with
+    | ELit (LInt _), ELit (LInt _) -> true
+    | _, _ -> false
 
-let typecheck_bin_op expr1 expr2 =
-	match expr1, expr2 with
-	| ELit (LInt _), ELit (LInt _) -> true
-	| _, _ -> false
+let typecheck_if exp =
+  match exp with
+    | ELit (LBool _) -> true
+    | _ -> false
 
-let typecheck_if expr1 expr2 expr3 =
-	match (expr1, expr2, expr3) with
-	| (ELit (LBool _), ELit (LInt _), ELit (LInt _)) -> true
-	| (_, _, _) -> false
+let unpack_int_exp exp =
+  match exp with
+  | ELit (LInt i) -> i
+  | _ -> failwith "Error, unpack_int_exp needs an int exp"
 
-let rec interpret_expr (expr: expr) : expr =
-  match expr with
-  | ELit (LInt i) -> ELit (LInt i)
-	| ELit (LBool b) -> ELit (LBool b)
-  | EBinOp (op, expr1, expr2) ->
-		begin
-			let expr1 = interpret_expr expr1 in
-			let expr2 = interpret_expr expr2 in
-			let typechecks = typecheck_bin_op expr1 expr2 in
-			if not typechecks
-			  then failwith ("Error: typechecking failed, "
-				              ^ "a binary operator should take 2 ints")
-				else
-					match op, expr1, expr2 with
-		      | (OAdd, ELit (LInt i1), ELit (LInt i2)) -> ELit (LInt (i1 + i2))
-					| (OSubtract, ELit (LInt i1), ELit (LInt i2)) -> ELit (LInt (i1 - i2))
-					| (OMultiply, ELit (LInt i1), ELit (LInt i2)) -> ELit (LInt (i1 * i2))
-					| (ODivide, ELit (LInt i1), ELit (LInt i2)) ->
-						if i2 = 0 then failwith "Error: division by 0 attempted"
-							else ELit (LInt (i1 / i2))
-					| (OLessThanEq, ELit (LInt i1), ELit (LInt i2)) ->
-						ELit (LBool (i1 <= i2))
-		      | _ -> failwith ("Error: unrecognized operator")
-    end
-	| ETernOp (op, expr1, expr2, expr3) ->
-		begin
-			let expr1 = interpret_expr expr1 in
-			let expr2 = interpret_expr expr2 in
-			let expr3 = interpret_expr expr3 in
-			let typechecks = typecheck_if expr1 expr2 expr3 in
-			if not typechecks 
-			  then failwith ("Error: typechecking failed, if function should take "
-				              ^ "a boolean and two integers")
-				else
-					match op with
-					| OIf -> begin
-									   match expr1 with
-									   | ELit (LBool b) -> if b then expr2 else expr3
-									 end
-		end
+let unpack_bool_exp exp =
+  match exp with
+  | ELit (LBool b) -> b
+  | _ -> failwith "Error, unpack_bool_exp needs a bool exp"
 
-let interpret_tree (syntax_tree: ast) : expr =
-  match syntax_tree with
-  | Root (expr_init) -> interpret_expr expr_init
+let interpret_bin_expr (op: bin_op) (e1: exp) (e2: exp) =
+  let i1 = unpack_int_exp e1 in
+  let i2 = unpack_int_exp e2 in
+  match op with
+  | OAdd        -> ELit (LInt (i1 + i2))
+  | OSubtract   -> ELit (LInt (i1 - i2))
+  | OMultiply   -> ELit (LInt (i1 * i2))
+  | ODivide     -> ELit (LInt (i1 / i2))
+  | OLessThanEq -> ELit (LBool (i1 <= i2))
 
-let returns_int expr =
-	match expr with
-	| ELit (LInt i) -> true
-	| _ -> false
+let rec interpret (e:exp) : exp =
+  match e with
+    | ELit l                    -> ELit l
+    | EBinOp (op, e1, e2)       ->
+      begin
+      let exp1 = interpret e1 in
+      let exp2 = interpret e2 in
+      let typechecks = typecheck_bin_op exp1 exp2 in
+      if not typechecks then failwith ("Typechecking failed, "
+                      ^ "a binary operator should take 2 ints")
+      else interpret_bin_expr op exp1 exp2
+      end
+    | EIf (e1, e2, e3)          ->
+      begin
+      let exp1 = interpret e1 in
+      let typechecks = typecheck_if exp1 in
+      if not typechecks then failwith ("Typechecking failed, "
+         ^ "an if operator should take a boolean and 2 values")
+      else
+        begin
+        if unpack_bool_exp exp1 then interpret e2
+        else interpret e3
+        end
+      end
 
-let return_int expr =
-	match expr with
-	| ELit (LInt i) -> i
-	| _ -> failwith "Error: expr should evaluate to a int literal"
-
-let return_bool expr =
-	match expr with
-	| ELit (LBool b) -> b
-	| _ -> failwith "Error: expr should evaluate to a bool literal"
-
-let print_expr expr =
-	if returns_int expr then (print_endline (string_of_int (return_int expr)))
-	  else (print_endline (string_of_bool (return_bool expr)))
+let string_of_interpreted exp =
+  match exp with
+  | ELit (LInt i) -> string_of_int i
+  | ELit (LBool b) -> string_of_bool b
+  | _ -> failwith "Uninterpreted expression passed to string_of_interpreted"
