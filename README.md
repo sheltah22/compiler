@@ -32,6 +32,8 @@ The compiler can be run using `./compiler.native`.
     + Parenthesized expressions
     + All binary operations **(right associative)
     + Conditionals
+3. Known Bugs
+  [No known bugs yet]
 
 #### Assignment 2
 1. New Features
