@@ -19,40 +19,40 @@ Library "lang"
 
 Test "test-plus"
   TestTools: compiler
-  Command: $compiler test-1.arith | diff test-1.out -
+  Command: $compiler tests/test-1.arith | diff tests/test-1.out -
 
 Test "test-arith"
   TestTools: compiler
-  Command: $compiler test-2.arith | diff test-2.out -
+  Command: $compiler tests/test-2.arith | diff tests/test-2.out -
 
 Test "test-if-outer"
   TestTools: compiler
-  Command: $compiler test-3.arith | diff test-3.out -
+  Command: $compiler tests/test-3.arith | diff tests/test-3.out -
 
 Test "test-if-inner"
   TestTools: compiler
-  Command: $compiler test-4.arith | diff test-4.out -
+  Command: $compiler tests/test-4.arith | diff tests/test-4.out -
 
 Test "test-if-lazy"
   TestTools: compiler
-  Command: $compiler test-5.arith | diff test-5.out -
+  Command: $compiler tests/test-5.arith | diff tests/test-5.out -
 
 Test "test-plus-parse"
   TestTools: compiler
-  Command: $compiler -parse test-1.arith | diff test-1.parse.out -
+  Command: $compiler -parse tests/test-1.arith | diff tests/test-1.parse.out -
 
 Test "test-arith-parse"
   TestTools: compiler
-  Command: $compiler -parse test-2.arith | diff test-2.parse.out -
+  Command: $compiler -parse tests/test-2.arith | diff tests/test-2.parse.out -
 
 Test "test-if-outer-parse"
   TestTools: compiler
-  Command: $compiler -parse test-3.arith | diff test-3.parse.out -
+  Command: $compiler -parse tests/test-3.arith | diff tests/test-3.parse.out -
 
 Test "test-if-inner-parse"
   TestTools: compiler
-  Command: $compiler -parse test-4.arith | diff test-4.parse.out -
+  Command: $compiler -parse tests/test-4.arith | diff tests/test-4.parse.out -
 
 Test "test-if-lazy-parse"
   TestTools: compiler
-  Command: $compiler -parse test-5.arith | diff test-5.parse.out -
+  Command: $compiler -parse tests/test-5.arith | diff tests/test-5.parse.out -

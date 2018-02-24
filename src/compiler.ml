@@ -20,7 +20,7 @@ let main () =
     |> Lexing.from_channel
     |> prog token
     |> Lang.interpret
-    |> Lang.string_of_interpreted
+    |> Lang.string_of_value
     |> print_endline))
   usage_msg
 

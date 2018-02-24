@@ -1,4 +1,0 @@
-if true
-  then (2 * 3)
-  else  2 * 1 - 1
-false

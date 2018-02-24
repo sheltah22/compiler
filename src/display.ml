@@ -13,13 +13,20 @@ let string_of_token (t: token) : string =
   | DIVIDE -> "/"
   | LEQ    -> "<="
   | IF     -> "if"
-  | THEN   -> "then"
-  | ELSE   -> "else"
+  | THEN   -> ""
+  | ELSE   -> ""
+  | LET    -> "let"
+  | EQUALS -> "="
+  | IN     -> "in"
+  | FUN    -> "fun"
+  | ARROW  -> "->"
   | INT i  -> string_of_int i
   | BOOL b -> string_of_bool b
+  | NAME s  -> s
   | EOF    -> ""
 
-(* Copied from Matthias Braun at https://stackoverflow.com/questions/9863036/ocaml-function-parameter-pattern-matching-for-strings *)
+(* Copied from Matthias Braun at
+ * https://stackoverflow.com/questions/9863036/ocaml-function-parameter-pattern-matching-for-strings *)
 let explode str =
   let rec explode_inner cur_index chars =
     if (cur_index < String.length str) then
@@ -42,7 +49,8 @@ let string_of_token_list (tlist: token list) : string =
     in
     match explode (process_token "[" tlist) with
     | '[' :: [] -> "[]"
-    | tstring -> (String.sub (implode tstring) 0 ((String.length (implode tstring)) - 2)) ^ "]"
+    | tstring -> (String.sub (implode tstring) 0
+      ((String.length (implode tstring)) - 2)) ^ "]"
 
 let string_of_bin_op (op: bin_op) =
   match op with
@@ -54,9 +62,14 @@ let string_of_bin_op (op: bin_op) =
 
 let rec string_of_exp (e: exp) : string =
   match e with
-  | ELit (LInt i) -> string_of_int i
-  | ELit (LBool b) -> string_of_bool b
+  | EVal v -> string_of_value v
   | EBinOp (op, exp1, exp2) ->
-    "(" ^ (string_of_bin_op op) ^ " " ^ (string_of_exp exp1) ^ " " ^ (string_of_exp exp2) ^ ")"
+    "(" ^ (string_of_bin_op op) ^ " " ^ (string_of_exp exp1) ^ " "
+      ^ (string_of_exp exp2) ^ ")"
   | EIf (exp1, exp2, exp3) ->
-    "(if " ^ (string_of_exp exp1) ^ " " ^ (string_of_exp exp2) ^ " " ^ (string_of_exp exp3) ^ ")"
+    "(if " ^ (string_of_exp exp1) ^ " " ^ (string_of_exp exp2) ^ " "
+      ^ (string_of_exp exp3) ^ ")"
+  | EVar s -> s
+  | ELet (expr1, expr2, expr3) -> ("let " ^ (string_of_exp expr1) ^ " = "
+    ^ (string_of_exp expr2) ^ " in " ^ (string_of_exp expr3))
+  | EFunCall (expr1, expr2) -> ((string_of_exp expr1) ^ " " ^ (string_of_exp expr2))
