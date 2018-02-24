@@ -13,6 +13,9 @@
 %token TIMES      (* * *)
 %token DIVIDE     (* / *)
 %token LEQ        (* <= *)
+%token GEQ        (* >= *)
+%token LSTHN      (* < *)
+%token GTTHN      (* > *)
 %token IF         (* if *)
 %token THEN       (* then *)
 %token ELSE       (* else *)
@@ -45,6 +48,10 @@ bin_op:
   | TIMES  { OMultiply }
   | DIVIDE { ODivide }
   | LEQ    { OLessThanEq }
+  | GEQ    { OGreaterThanEq }
+  | LSTHN  { OLessThan }
+  | GTTHN  { OGreaterThan }
+  | EQUALS { OEquals }
 
 base_exp:
   | i=INT               { EVal (VLit (LInt i)) }

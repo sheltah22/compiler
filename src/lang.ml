@@ -8,6 +8,10 @@ type bin_op =
   | OMultiply
   | ODivide
   | OLessThanEq
+  | OGreaterThanEq
+  | OLessThan
+  | OGreaterThan
+  | OEquals
 
 type value =
   | VLit of lit
@@ -19,6 +23,24 @@ and exp =
   | EVar of string
   | ELet of exp * exp * exp
   | EFunCall of exp * exp
+
+let string_of_value (v: value) : string =
+  match v with
+  | VLit (LInt i) -> string_of_int i
+  | VLit (LBool b) -> string_of_bool b
+  | VFun (e1, e2) -> "<function>"
+
+let string_of_op (op: bin_op) : string =
+  match op with
+  | OAdd -> "+"
+  | OSubtract -> "-"
+  | OMultiply -> "*"
+  | ODivide -> "/"
+  | OLessThanEq -> "<="
+  | OGreaterThanEq -> ">="
+  | OLessThan -> "<"
+  | OGreaterThan -> ">"
+  | OEquals -> "="
 
 let rec subst (v: value) (s: string) (e: exp) : exp =
   match e with
@@ -37,7 +59,7 @@ let rec subst (v: value) (s: string) (e: exp) : exp =
 let typecheck_bin_op v1 v2 =
   match v1, v2 with
   | VLit (LInt _), VLit (LInt _) -> true
-  | _, _ -> false
+  | _, _ -> print_endline ("Bin op failed, given: " ^ (string_of_value v1) ^ " " ^ (string_of_value v2)); false
 
 let typecheck_if v =
   match v with
@@ -58,16 +80,20 @@ let interpret_bin_expr (op: bin_op) (v1: value) (v2: value) : value =
   let i1 = unpack_int_val v1 in
   let i2 = unpack_int_val v2 in
   match op with
-  | OAdd        -> VLit (LInt (i1 + i2))
-  | OSubtract   -> VLit (LInt (i1 - i2))
-  | OMultiply   -> VLit (LInt (i1 * i2))
-  | ODivide     -> VLit (LInt (i1 / i2))
-  | OLessThanEq -> VLit (LBool (i1 <= i2))
+  | OAdd           -> VLit (LInt (i1 + i2))
+  | OSubtract      -> VLit (LInt (i1 - i2))
+  | OMultiply      -> VLit (LInt (i1 * i2))
+  | ODivide        -> VLit (LInt (i1 / i2))
+  | OLessThanEq    -> VLit (LBool (i1 <= i2))
+  | OGreaterThanEq -> VLit (LBool (i1 >= i2))
+  | OLessThan      -> VLit (LBool (i1 < i2))
+  | OGreaterThan   -> VLit (LBool (i1 > i2))
+  | OEquals        -> VLit (LBool (i1 = i2))
 
 let rec interpret (e: exp) : value =
   match e with
   | EVal v -> v
-  | EBinOp (op, e1, e2) ->
+  | EBinOp (op, e1, e2) -> print_endline (string_of_op op);
     begin
       let v1 = interpret e1 in
       let v2 = interpret e2 in
@@ -92,7 +118,7 @@ let rec interpret (e: exp) : value =
     let s_val = interpret e1 in
     let subst_exp = subst s_val s e2 in
     interpret subst_exp
-  | EVar s -> failwith ("A VAR: " ^ s);
+  | EVar s -> failwith ("Unbound variable: " ^ s);
   | EFunCall (e1, e2) ->
     begin
       match interpret e1 with
@@ -103,8 +129,4 @@ let rec interpret (e: exp) : value =
       | _ -> failwith "Function call formatting incorrect"
     end
 
-let string_of_value (v: value) : string =
-  match v with
-  | VLit (LInt i) -> string_of_int i
-  | VLit (LBool b) -> string_of_bool b
-  | VFun (e1, e2) -> "<function>"
+
