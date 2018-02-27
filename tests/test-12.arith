@@ -1,0 +1,6 @@
+let power = fix f x -> fun y ->
+  if y = 0
+  then 1
+  else x * ((f x) (y - 1))
+in
+  (power 6) 3

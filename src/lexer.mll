@@ -23,6 +23,7 @@ let symbols : (string * Parser.token) list =
   ; ("in", IN)
   ; ("fun", FUN)
   ; ("->", ARROW)
+  ; ("fix", FIX)
   ]
 
 let create_symbol lexbuf =
@@ -44,7 +45,8 @@ rule token = parse
   | '>'                       { create_symbol lexbuf }
   | "<=" | "if" | "then"
   | "else" | "let" | "in"
-  | "in" | "fun" | "->"       { create_symbol lexbuf }
-  | "true" | "false" | ">="   { BOOL (bool_of_string (lexeme lexbuf)) }
+  | "in" | "fun" | "->"
+  | ">=" | "fix"              { create_symbol lexbuf }
+  | "true" | "false"          { BOOL (bool_of_string (lexeme lexbuf)) }
   | var_name                  { NAME (lexeme lexbuf) }
   | _ as c { raise @@ Lexer_error ("Unexpected character: " ^ Char.escaped c) }

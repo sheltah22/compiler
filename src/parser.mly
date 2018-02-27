@@ -24,6 +24,7 @@
 %token IN         (* in *)
 %token FUN        (* fun *)
 %token ARROW      (* -> *)
+%token FIX        (* fix *)
 
 %token EOF
 
@@ -38,8 +39,7 @@ exp:
   | e1=base_exp op=bin_op e2=exp        { EBinOp (op, e1, e2) }
   | IF e1=exp THEN e2=exp ELSE e3=exp   { EIf (e1, e2, e3) }
   | LET n=NAME EQUALS e1=exp IN e2=exp  { ELet (EVar n, e1, e2) }
-  | FUN n=NAME ARROW e=exp              { EVal (VFun (EVar n, e)) }
-  | e1=exp e2=exp                       { EFunCall (e1, e2) }
+  | f=base_exp e=exp                    { EFunCall (f, e) }
   | e=base_exp                          { e }
 
 bin_op:
@@ -54,7 +54,9 @@ bin_op:
   | EQUALS { OEquals }
 
 base_exp:
-  | i=INT               { EVal (VLit (LInt i)) }
-  | b=BOOL              { EVal (VLit (LBool b)) }
-  | n=NAME              { EVar n }
-  | LPAREN e=exp RPAREN { e }
+  | FUN n=NAME ARROW e=exp              { EVal (VFun (EVar n, e)) }
+  | FIX n1=NAME n2=NAME ARROW e=exp     { EVal (VFix (EVar n1, EVar n2, e)) }
+  | i=INT                               { EVal (VLit (LInt i)) }
+  | b=BOOL                              { EVal (VLit (LBool b)) }
+  | n=NAME                              { EVar n }
+  | LPAREN e=exp RPAREN                 { e }

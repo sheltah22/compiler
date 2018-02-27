@@ -3,6 +3,25 @@ open Lexer
 open Parser
 open Lang
 
+let string_of_value (v: value) : string =
+  match v with
+  | VLit (LInt i) -> string_of_int i
+  | VLit (LBool b) -> string_of_bool b
+  | VFun (e1, e2) -> ("(fun " ^ (Display.string_of_exp e1) ^ " " (Display.string_of_exp e2) ^ ")")
+  | VFix (e1, e2, e3) -> "<fix>"
+
+let string_of_op (op: bin_op) : string =
+  match op with
+  | OAdd -> "+"
+  | OSubtract -> "-"
+  | OMultiply -> "*"
+  | ODivide -> "/"
+  | OLessThanEq -> "<="
+  | OGreaterThanEq -> ">="
+  | OLessThan -> "<"
+  | OGreaterThan -> ">"
+  | OEquals -> "="
+
 let string_of_token (t: token) : string =
   match t with
   | LPAREN -> "("
@@ -12,6 +31,9 @@ let string_of_token (t: token) : string =
   | TIMES  -> "*"
   | DIVIDE -> "/"
   | LEQ    -> "<="
+  | LSTHN  -> "<"
+  | GTTHN  -> ">"
+  | GEQ    -> ">="
   | IF     -> "if"
   | THEN   -> ""
   | ELSE   -> ""
@@ -20,6 +42,7 @@ let string_of_token (t: token) : string =
   | IN     -> "in"
   | FUN    -> "fun"
   | ARROW  -> "->"
+  | FIX    -> "fix"
   | INT i  -> string_of_int i
   | BOOL b -> string_of_bool b
   | NAME s  -> s
@@ -58,7 +81,11 @@ let string_of_bin_op (op: bin_op) =
   | OSubtract -> "-"
   | OMultiply -> "*"
   | ODivide -> "/"
+  | OLessThan -> "<"
   | OLessThanEq -> "<="
+  | OGreaterThan -> ">"
+  | OGreaterThanEq -> ">="
+  | OEquals -> "="
 
 let rec string_of_exp (e: exp) : string =
   match e with
@@ -67,9 +94,9 @@ let rec string_of_exp (e: exp) : string =
     "(" ^ (string_of_bin_op op) ^ " " ^ (string_of_exp exp1) ^ " "
       ^ (string_of_exp exp2) ^ ")"
   | EIf (exp1, exp2, exp3) ->
-    "(if " ^ (string_of_exp exp1) ^ " " ^ (string_of_exp exp2) ^ " "
-      ^ (string_of_exp exp3) ^ ")"
+    "(if (" ^ (string_of_exp exp1) ^ ") (" ^ (string_of_exp exp2) ^ ") ("
+      ^ (string_of_exp exp3) ^ "))"
   | EVar s -> s
-  | ELet (expr1, expr2, expr3) -> ("let " ^ (string_of_exp expr1) ^ " = "
-    ^ (string_of_exp expr2) ^ " in " ^ (string_of_exp expr3))
+  | ELet (expr1, expr2, expr3) -> ("(let " ^ (string_of_exp expr1) ^ " = "
+    ^ (string_of_exp expr2) ^ " in (" ^ (string_of_exp expr3) ^ "))")
   | EFunCall (expr1, expr2) -> ((string_of_exp expr1) ^ " " ^ (string_of_exp expr2))

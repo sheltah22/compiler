@@ -37,6 +37,35 @@ Test "test-if-lazy"
   TestTools: compiler
   Command: $compiler tests/test-5.arith | diff tests/test-5.out -
 
+Test "test-let"
+  TestTools: compiler
+  Command: $compiler tests/test-6.arith | diff tests/test-6.out -
+
+Test "test-fun"
+  TestTools: compiler
+  Command: $compiler tests/test-7.arith | diff tests/test-7.out -
+
+Test "test-lets-and-fun"
+  TestTools: compiler
+  Command: $compiler tests/test-8.arith | diff tests/test-8.out -
+
+Test "test-if-fun"
+  TestTools: compiler
+  Command: $compiler tests/test-9.arith | diff tests/test-9.out -
+
+Test "test-multi-params"
+  TestTools: compiler
+  Command: $compiler tests/test-10.arith | diff tests/test-10.out -
+
+Test "test-fix"
+  TestTools: compiler
+  Command: $compiler tests/test-11.arith | diff tests/test-11.out -
+
+Test "test-fix-multi-params"
+  TestTools: compiler
+  Command: $compiler tests/test-12.arith | diff tests/test-12.out -
+
+
 Test "test-plus-parse"
   TestTools: compiler
   Command: $compiler -parse tests/test-1.arith | diff tests/test-1.parse.out -
@@ -56,3 +85,32 @@ Test "test-if-inner-parse"
 Test "test-if-lazy-parse"
   TestTools: compiler
   Command: $compiler -parse tests/test-5.arith | diff tests/test-5.parse.out -
+
+Test "test-let-parse"
+  TestTools: compiler
+  Command: $compiler -parse tests/test-6.arith | diff tests/test-6.parse.out -
+
+Test "test-fun-parse"
+  TestTools: compiler
+  Command: $compiler -parse tests/test-7.arith | diff tests/test-7.parse.out -
+
+Test "test-lets-and-fun-parse"
+  TestTools: compiler
+  Command: $compiler -parse tests/test-8.arith | diff tests/test-8.parse.out -
+
+Test "test-if-fun-parse"
+  TestTools: compiler
+  Command: $compiler -parse tests/test-9.arith | diff tests/test-9.parse.out -
+
+Test "test-multi-params-parse"
+  TestTools: compiler
+  Command: $compiler -parse tests/test-10.arith | diff tests/test-10.parse.out -
+
+Test "test-fix-parse"
+  TestTools: compiler
+  Command: $compiler -parse tests/test-11.arith | diff tests/test-11.parse.out -
+
+Test "test-fix-multi-params-parse"
+  TestTools: compiler
+  Command: $compiler -parse tests/test-12.arith | diff tests/test-12.parse.out -
+
