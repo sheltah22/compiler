@@ -65,25 +65,43 @@ let string_of_bin_op (op: bin_op) =
   | OGreaterThanEq -> ">="
   | OEquals -> "="
 
+let rec string_of_exp_parsed (e: exp) : string =
+  match e with
+  | EVal v -> string_of_value_parsed v
+  | EBinOp (op, exp1, exp2) ->
+    "(" ^ (string_of_bin_op op) ^ " " ^ (string_of_exp_parsed exp1) ^ " "
+      ^ (string_of_exp_parsed exp2) ^ ")"
+  | EIf (exp1, exp2, exp3) ->
+    "(if " ^ (string_of_exp_parsed exp1) ^ " " ^ (string_of_exp_parsed exp2) ^ " "
+      ^ (string_of_exp_parsed exp3) ^ ")"
+  | EVar s -> s
+  | ELet (expr1, expr2, expr3) -> ("(let " ^ (string_of_exp_parsed expr1) ^ " = "
+      ^ (string_of_exp_parsed expr2) ^ " in " ^ (string_of_exp_parsed expr3) ^ ")")
+  | EFunCall (expr1, expr2) -> ("(" ^ (string_of_exp_parsed expr1) ^ " " ^ (string_of_exp_parsed expr2) ^ ")")
+and string_of_value_parsed (v: value) : string =
+  match v with
+  | VLit (LInt i) -> string_of_int i
+  | VLit (LBool b) -> string_of_bool b
+  | VFun (e1, e2) -> ("(fun " ^ (string_of_exp_parsed e1) ^ " " ^ (string_of_exp_parsed e2) ^ ")")
+  | VFix (e1, e2, e3) -> ("(fix " ^ (string_of_exp_parsed e1) ^ " " ^ (string_of_exp_parsed e2) ^ " " ^ (string_of_exp_parsed e3) ^ ")")
+
 let rec string_of_exp (e: exp) : string =
   match e with
   | EVal v -> string_of_value v
-  | EBinOp (op, exp1, exp2) ->
-    "(" ^ (string_of_bin_op op) ^ " " ^ (string_of_exp exp1) ^ " "
-      ^ (string_of_exp exp2) ^ ")"
-  | EIf (exp1, exp2, exp3) ->
-    "(if " ^ (string_of_exp exp1) ^ " " ^ (string_of_exp exp2) ^ " "
-      ^ (string_of_exp exp3) ^ ")"
+  | EBinOp (op, e1, e2) ->
+    ((string_of_exp e1) ^ " " ^ (string_of_bin_op op) ^ " " ^ (string_of_exp e2))
+  | EIf (e1, e2, e3) ->
+    ("if " ^ (string_of_exp e1) ^ " then " ^ (string_of_exp e2) ^ "\n    else " ^ (string_of_exp e3))
   | EVar s -> s
-  | ELet (expr1, expr2, expr3) -> ("(let " ^ (string_of_exp expr1) ^ " = "
-      ^ (string_of_exp expr2) ^ " in " ^ (string_of_exp expr3) ^ ")")
-  | EFunCall (expr1, expr2) -> ("(" ^ (string_of_exp expr1) ^ " " ^ (string_of_exp expr2) ^ ")")
+  | ELet (e1, e2, e3) ->
+    ("let " ^ (string_of_exp e1) ^ " = " ^ (string_of_exp e2) ^ " in\n    " ^ (string_of_exp e3))
+  | EFunCall (e1, e2) -> ((string_of_exp e1) ^ " " ^ (string_of_exp e2))
 and string_of_value (v: value) : string =
   match v with
   | VLit (LInt i) -> string_of_int i
   | VLit (LBool b) -> string_of_bool b
-  | VFun (e1, e2) -> ("(fun " ^ (string_of_exp e1) ^ " " ^ (string_of_exp e2) ^ ")")
-  | VFix (e1, e2, e3) -> ("(fix " ^ (string_of_exp e1) ^ " " ^ (string_of_exp e2) ^ " " ^ (string_of_exp e3) ^ ")")
+  | VFun (e1, e2) -> ("fun " ^ (string_of_exp e1) ^ " -> " ^ (string_of_exp e2))
+  | VFix (e1, e2, e3) -> ("fix " ^ (string_of_exp e1) ^ " " ^ (string_of_exp e2) ^ " -> " ^ (string_of_exp e3))
 
 let rec subst (v: value) (s: string) (e: exp) : exp =
   match e with
@@ -131,7 +149,7 @@ let unpack_bool_val v =
   | VLit (LBool b) -> b
   | _ -> failwith "Error, unpack_bool_val needs a bool val"
 
-let interpret_bin_expr (op: bin_op) (v1: value) (v2: value) : value =
+let interpret_bin_exp (op: bin_op) (v1: value) (v2: value) : value =
   let i1 = unpack_int_val v1 in
   let i2 = unpack_int_val v2 in
   match op with
@@ -145,48 +163,68 @@ let interpret_bin_expr (op: bin_op) (v1: value) (v2: value) : value =
   | OGreaterThan   -> VLit (LBool (i1 > i2))
   | OEquals        -> VLit (LBool (i1 = i2))
 
-let rec interpret (e: exp) : value =
+let is_value (e: exp) : bool =
+  match e with
+  | EVal _ -> true
+  | _ -> false
+
+let exp_to_value (e: exp) : value =
   match e with
   | EVal v -> v
+  | _ -> failwith ("exp_to_value called with non-value expression: " ^ (string_of_exp e))
+
+let rec step (e: exp) : exp =
+  match e with
+  | EVal v -> e
   | EBinOp (op, e1, e2) ->
     begin
-      let v1 = interpret e1 in
-      let v2 = interpret e2 in
-      let typechecks = typecheck_bin_op v1 v2 in
-      if not typechecks then failwith ("Typechecking failed, "
-                      ^ "a binary operator should take 2 ints")
-      else interpret_bin_expr op v1 v2
+      let interp_e1 = not (is_value e1) in
+      let interp_e2 = not (is_value e2) in
+      match interp_e1, interp_e2 with
+      | true, _ -> EBinOp (op, step e1, e2)
+      | false, true -> EBinOp (op, e1, step e2)
+      | false, false -> EVal (interpret_bin_exp op (exp_to_value e1) (exp_to_value e2))
     end
   | EIf (e1, e2, e3) ->
     begin
-      let vbool = interpret e1 in
-      let typechecks = typecheck_if vbool in
-      if not typechecks then failwith ("Typechecking failed, "
-         ^ "an if operator should take a boolean and 2 values")
-      else
-      begin
-        if unpack_bool_val vbool then interpret e2
-        else interpret e3
-      end
+      let interp_e1 = not (is_value e1) in
+      match interp_e1 with
+      | true -> EIf (step e1, e2, e3)
+      | false -> if (unpack_bool_val (exp_to_value e1)) then (step e2) else (step e3)
     end
   | ELet (EVar s, e1, e2) ->
-    let s_val = interpret e1 in
-    let subst_exp = subst s_val s e2 in
-    interpret subst_exp
+    begin
+      let interp_e1 = not (is_value e1) in
+      if interp_e1 then ELet (EVar s, step e1, e2)
+      else subst (exp_to_value e1) s e2
+    end
   | EVar s -> failwith ("Unbound variable: " ^ s);
   | EFunCall (e1, e2) ->
     begin
-      let e1' = interpret e1 in
-      match e1' with
-      | VFun (EVar s, f) ->
-        let s_val = interpret e2 in
-        let subst_exp = subst s_val s f in
-        interpret subst_exp
-      | VFix (EVar f, EVar x, e) ->
-        let s_input = interpret e2 in
-        let subst_input = subst s_input x e in
-        let subst_fname = subst e1' f subst_input in
-        interpret subst_fname
-      | _ -> failwith "Function call formatting incorrect"
+    let interp_e2 = not (is_value e2) in
+    if interp_e2 then EFunCall (e1, step e2)
+    else
+      match e1 with
+      | EFunCall _ -> EFunCall (step e1, e2)
+      | EVal (VFun (EVar s, f)) -> subst (exp_to_value e2) s f
+      | EVal (VFix (EVar f, EVar x, e)) ->
+        let subst_x = subst (exp_to_value e2) x e in
+        subst (exp_to_value e1) f subst_x
+      | _ -> failwith ("Interpretation: issue with function formatting")
     end
   | _ -> failwith "Interpretation: unrecognized expression"
+
+let eval (expr: exp) : value =
+  let rec eval' (e: exp) : exp =
+    if is_value e then e else eval'(step e) in
+  exp_to_value (eval' expr)
+
+let eval_print (expr: exp) : unit =
+  let rec eval' (e: exp) : exp =
+    if is_value e then e
+    else
+      (let result = step e in
+      print_endline ("--> " ^ (string_of_exp result));
+      eval'(result)) in
+  print_endline ("    " ^ string_of_exp expr);
+  eval' expr; ();

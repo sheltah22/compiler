@@ -1,5 +1,5 @@
 %{
-  open Lang
+  open NewLang
 %}
 
 %token <int> INT
@@ -28,7 +28,7 @@
 
 %token EOF
 
-%start <Lang.exp> prog
+%start <NewLang.exp> prog
 
 %%
 

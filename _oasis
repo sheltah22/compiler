@@ -15,7 +15,7 @@ Executable "compiler"
 
 Library "lang"
   Path: src
-  Modules: Lang, Lexer, Parser
+  Modules: NewLang, Lexer, Parser
 
 Test "test-plus"
   TestTools: compiler

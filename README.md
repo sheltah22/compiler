@@ -19,6 +19,16 @@ The compiler can be run using `./compiler.native`.
 
 ## Changelog
 
+#### Assignment 4
+1. New Features
+  - Let bindings of the form `let x = 10 in ...`
+  - function definitions of the form `fun x -> x + x`
+  - recursive function definitions of the form `fix f x -> if ... then ... else 1 + (f (x - 1))`
+2. Changes to existing features
+  - Some error messages have been altered
+3. Known Bugs
+  - Spaces must be used as a delimiter for binary operations with variables. For example, `x+1` will result in an error so `x + 1` must be used
+
 #### Assignment 3
 1. New Features
   - if statements now have lazy execution
