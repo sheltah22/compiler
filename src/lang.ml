@@ -13,16 +13,21 @@ type bin_op =
   | OGreaterThan
   | OEquals
 
+type typ =
+  | TInt
+  | TBool
+  | TFun of typ * typ
+
 type value =
   | VLit of lit
-  | VFun of exp * exp
-  | VFix of exp * exp * exp
+  | VFun of exp * exp * typ * typ
+  | VFix of exp * exp * exp * typ * typ
 and exp =
   | EVal of value
   | EBinOp of bin_op * exp * exp
   | EIf of exp * exp * exp
   | EVar of string
-  | ELet of exp * exp * exp
+  | ELet of exp * exp * exp * typ
   | EFunCall of exp * exp
 
 let string_of_op (op: bin_op) : string =
@@ -36,6 +41,12 @@ let string_of_op (op: bin_op) : string =
   | OLessThan -> "<"
   | OGreaterThan -> ">"
   | OEquals -> "="
+
+let rec string_of_type (t: typ) : string =
+  match t with
+  | TInt -> "int"
+  | TBool -> "bool"
+  | TFun (t1, t2) -> ((string_of_type t1) ^ " -> " ^ (string_of_type t2))
 
 (* Copied from Matthias Braun at
  * https://stackoverflow.com/questions/9863036/ocaml-function-parameter-pattern-matching-for-strings *)
@@ -75,15 +86,21 @@ let rec string_of_exp_parsed (e: exp) : string =
     "(if " ^ (string_of_exp_parsed exp1) ^ " " ^ (string_of_exp_parsed exp2) ^ " "
       ^ (string_of_exp_parsed exp3) ^ ")"
   | EVar s -> s
-  | ELet (expr1, expr2, expr3) -> ("(let " ^ (string_of_exp_parsed expr1) ^ " = "
+  | ELet (expr1, expr2, expr3, t) -> ("(let " ^ (string_of_exp_parsed expr1)
+      ^ " : " ^ (string_of_type t) ^ " = "
       ^ (string_of_exp_parsed expr2) ^ " in " ^ (string_of_exp_parsed expr3) ^ ")")
-  | EFunCall (expr1, expr2) -> ("(" ^ (string_of_exp_parsed expr1) ^ " " ^ (string_of_exp_parsed expr2) ^ ")")
+  | EFunCall (expr1, expr2) -> ("(" ^ (string_of_exp_parsed expr1) ^ " "
+    ^ (string_of_exp_parsed expr2) ^ ")")
 and string_of_value_parsed (v: value) : string =
   match v with
   | VLit (LInt i) -> string_of_int i
   | VLit (LBool b) -> string_of_bool b
-  | VFun (e1, e2) -> ("(fun " ^ (string_of_exp_parsed e1) ^ " " ^ (string_of_exp_parsed e2) ^ ")")
-  | VFix (e1, e2, e3) -> ("(fix " ^ (string_of_exp_parsed e1) ^ " " ^ (string_of_exp_parsed e2) ^ " " ^ (string_of_exp_parsed e3) ^ ")")
+  | VFun (e1, e2, t1, t2) -> ("(fun (" ^ (string_of_exp_parsed e1) ^ ": "
+    ^ (string_of_type t1) ^ ") : " ^ (string_of_type t2) ^ " -> "
+    ^ (string_of_exp_parsed e2) ^ ")")
+  | VFix (e1, e2, e3, t1, t2) -> ("(fix " ^ (string_of_exp_parsed e1) ^ " ( "
+    ^ (string_of_exp_parsed e2) ^ ": " ^ (string_of_type t1) ^ ") : "
+    ^ (string_of_type t2) ^ " -> " ^ " " ^ (string_of_exp_parsed e3) ^ ")")
 
 let rec string_of_exp (e: exp) : string =
   match e with
@@ -91,17 +108,91 @@ let rec string_of_exp (e: exp) : string =
   | EBinOp (op, e1, e2) ->
     ((string_of_exp e1) ^ " " ^ (string_of_bin_op op) ^ " " ^ (string_of_exp e2))
   | EIf (e1, e2, e3) ->
-    ("if " ^ (string_of_exp e1) ^ " then " ^ (string_of_exp e2) ^ "\n    else " ^ (string_of_exp e3))
+    ("if " ^ (string_of_exp e1) ^ " then " ^ (string_of_exp e2) ^ "\n    else "
+    ^ (string_of_exp e3))
   | EVar s -> s
-  | ELet (e1, e2, e3) ->
-    ("let " ^ (string_of_exp e1) ^ " = " ^ (string_of_exp e2) ^ " in\n    " ^ (string_of_exp e3))
+  | ELet (e1, e2, e3, t) ->
+    ("let " ^ (string_of_exp e1) ^ " : " ^ (string_of_type t) ^ " = "
+    ^ (string_of_exp e2) ^ " in\n    " ^ (string_of_exp e3))
   | EFunCall (e1, e2) -> ((string_of_exp e1) ^ " " ^ (string_of_exp e2))
 and string_of_value (v: value) : string =
   match v with
   | VLit (LInt i) -> string_of_int i
   | VLit (LBool b) -> string_of_bool b
-  | VFun (e1, e2) -> ("fun " ^ (string_of_exp e1) ^ " -> " ^ (string_of_exp e2))
-  | VFix (e1, e2, e3) -> ("fix " ^ (string_of_exp e1) ^ " " ^ (string_of_exp e2) ^ " -> " ^ (string_of_exp e3))
+  | VFun (e1, e2, t1, t2) -> ("fun (" ^ (string_of_exp e1) ^ ": "
+    ^ (string_of_type t1) ^ ") : " ^ (string_of_type t2) ^ " -> " ^ (string_of_exp e2))
+  | VFix (e1, e2, e3, t1, t2) -> ("fix (" ^ (string_of_exp e1) ^ ": "
+    ^ (string_of_type t2) ^ ") :" ^ (string_of_type t2) ^ (string_of_exp e2) ^ " -> "
+    ^ (string_of_exp e3))
+
+let type_equals (t1: typ) (t2: typ) : bool =
+  match t1, t2 with
+  | TInt, TInt -> true
+  | TBool, TBool -> true
+  | TFun (t1, t2), TFun (t1, t2) -> true
+  | _ -> false
+
+let type_of_bin_op_in (op: bin_op) : typ =
+  match op with
+  | _ -> TInt
+
+let type_of_bin_op_out (op: bin_op) : typ =
+  match op with
+  | OAdd | OSubtract
+  | OMultiply | ODivide -> TInt
+  | _ -> TBool
+
+let rec typecheck (ctx: string * typ list) (e: exp) : typ =
+  match e with
+  | EVal (VLit (LInt _)) -> TInt
+  | EVal (VLit (LBool _)) -> TBool
+  | EVal (VFun (EVar s, e, t1, t2)) ->
+    let e_type = typecheck (cons (s, t1) ctx) e in
+    if type_equals e_type t2 then t2
+    else failwith ("Function typechecking failed, expected return type: "
+    ^ (string_of_type t2) ^ ", actual: " ^ (string_of_type e_type))
+  | EVal (VFun (EVar f, EVar s, e, t1, t2)) ->
+    let e_type = typecheck (cons (f, t2) (cons (s, t1) ctx)) in
+    if type_equals e_type t2 then t2
+    else failwith ("Fixpoint typechecking failed, expected return type: "
+    ^ (string_of_type t2) ^ ", actual: " ^ (string_of_type e_type))
+  | EBinOp (op, e1, e2) ->
+    let in_type = type_of_bin_op_in op in
+    let e1_type = typecheck e1 in
+    let e2_type = typecheck e2 in
+    if (type_equals e1_type in_type) && (type_equals e2_type in_type) then type_of_bin_op_out op
+    else failwith ("Binary op typechecking failed, expected input type: "
+    ^ (string_of_type in_type) ^ ", actual: " ^ (string_of_type e1_type)
+    ^ " and " ^ (string_of_type e2_type))
+  | EIf (e1, e2, e3) ->
+    let e1_type = typecheck ctx e1 in
+    let e2_type = typecheck ctx e2 in
+    let e3_type = typecheck ctx e3 in
+    if (type_equals e1_type TBool) && (type_equals e2_type e3_type)
+    then e2_type
+    else failwith
+    ("If typechecking failed, expected format: if <bool> then <t> else <t>, "
+    ^ "actual: " ^ (string_of_type e1_type) ^ ", " ^ (string_of_type e2_type)
+    ^ ", " ^ (string_of_type e3_type))
+  | EVar s -> List.assoc s ctx
+  | ELet (EVar s, e1, e2, t) ->
+    let e1_type = typecheck ctx e1 in
+    let e2_type = typecheck (cons (s, t) ctx) e2 in
+    if (type_equals t e1_type) then e2_type
+    else failwith ("Let typechecking failed, expected binding type: "
+    ^ (string_of_type t) ", actual: " ^ (string_of_type e1_type))
+  | EFunCall (e1, e2) ->
+    let e1_type = typecheck ctx e1 in
+    let e2_type = typecheck ctx e2 in
+    match e1_type with
+    | TFun (t1, t2) ->
+      begin
+        if type_equals t1 e2_type then t2
+        else failwith ("Fun call typechecking failed, expected input type: "
+        ^ (string_of_type t1) ^ ", actual: " ^ (string_of_type e2_type))
+      end
+    | _ -> failwith ("Fun call typechecking error, first expression should be"
+      ^ " of type function, actual: " ^ (string_of_type e1_type))
 
 let rec subst (v: value) (s: string) (e: exp) : exp =
   match e with
@@ -109,35 +200,25 @@ let rec subst (v: value) (s: string) (e: exp) : exp =
     begin
       match v' with
       | VLit l -> EVal (VLit l)
-      | VFun (EVar str, e') -> (if (compare str s) = 0
+      | VFun (EVar str, e', t1, t2) -> (if (compare str s) = 0
         then e
-        else EVal (VFun (EVar str, (subst v s e'))))
-      | VFix (EVar f, EVar x, e') ->
+        else EVal (VFun (EVar str, (subst v s e'), t1, t2)))
+      | VFix (EVar f, EVar x, e', t1, t2) ->
         begin
         match (compare f s), (compare x s) with
         | 0,_ -> e
         | _,0 -> e
-        | _ -> EVal (VFix (EVar f, EVar x, (subst v s e')))
+        | _ -> EVal (VFix (EVar f, EVar x, (subst v s e'), t1, t2))
         end
       | _ -> failwith "Substitution: unexpected value"
     end
   | EBinOp (op, e1, e2) -> EBinOp (op, (subst v s e1 ), (subst v s e2))
   | EIf (e1, e2, e3) -> EIf ((subst v s e1), (subst v s e2), (subst v s e3))
   | EVar str -> (if (compare str s) = 0 then EVal v else e)
-  | ELet (EVar str, e1, e2) -> (if (compare str s) = 0 then e
-    else ELet (EVar str, (subst v s e1), (subst v s e2)))
+  | ELet (EVar str, e1, e2, t) -> (if (compare str s) = 0 then e
+    else ELet (EVar str, (subst v s e1), (subst v s e2), t))
   | EFunCall (f, e2) -> EFunCall ((subst v s f), (subst v s e2))
   | _ -> failwith "Substitution: unrecognized expression"
-
-let typecheck_bin_op v1 v2 =
-  match v1, v2 with
-  | VLit (LInt _), VLit (LInt _) -> true
-  | _, _ -> failwith ("Typechecking bin op failed, given: " ^ (string_of_value v1) ^ " " ^ (string_of_value v2))
-
-let typecheck_if v =
-  match v with
-  | VLit (LBool _) -> true
-  | _ -> false
 
 let unpack_int_val v =
   match v with
@@ -192,10 +273,10 @@ let rec step (e: exp) : exp =
       | true -> EIf (step e1, e2, e3)
       | false -> if (unpack_bool_val (exp_to_value e1)) then (step e2) else (step e3)
     end
-  | ELet (EVar s, e1, e2) ->
+  | ELet (EVar s, e1, e2, t) ->
     begin
       let interp_e1 = not (is_value e1) in
-      if interp_e1 then ELet (EVar s, step e1, e2)
+      if interp_e1 then ELet (EVar s, step e1, e2, t)
       else subst (exp_to_value e1) s e2
     end
   | EVar s -> failwith ("Unbound variable: " ^ s);
@@ -206,8 +287,8 @@ let rec step (e: exp) : exp =
     else
       match e1 with
       | EFunCall _ -> EFunCall (step e1, e2)
-      | EVal (VFun (EVar s, f)) -> subst (exp_to_value e2) s f
-      | EVal (VFix (EVar f, EVar x, e)) ->
+      | EVal (VFun (EVar s, f, t1, t2)) -> subst (exp_to_value e2) s f
+      | EVal (VFix (EVar f, EVar x, e, t1, t2)) ->
         let subst_x = subst (exp_to_value e2) x e in
         subst (exp_to_value e1) f subst_x
       | _ -> failwith ("Interpretation: issue with function formatting")
@@ -217,6 +298,7 @@ let rec step (e: exp) : exp =
 let eval (expr: exp) : value =
   let rec eval' (e: exp) : exp =
     if is_value e then e else eval'(step e) in
+  let typechecks = typecheck [] expr in
   exp_to_value (eval' expr)
 
 let eval_print (expr: exp) : unit =
@@ -226,5 +308,6 @@ let eval_print (expr: exp) : unit =
       (let result = step e in
       print_endline ("--> " ^ (string_of_exp result));
       eval'(result)) in
+  let typechecks = typecheck [] expr in
   print_endline ("    " ^ string_of_exp expr);
   eval' expr; ();

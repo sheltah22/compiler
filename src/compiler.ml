@@ -2,7 +2,7 @@
 open Pervasives
 open Lexer
 open Parser
-open NewLang
+open Lang
 
 let arg_list =
   [ ("-parse",

@@ -24,6 +24,9 @@ let symbols : (string * Parser.token) list =
   ; ("fun", FUN)
   ; ("->", ARROW)
   ; ("fix", FIX)
+  ; (":", COLON)
+  ; ("int", TINT)
+  ; ("bool", TBOOL)
   ]
 
 let create_symbol lexbuf =
@@ -42,7 +45,7 @@ rule token = parse
   | whitespace+ | newline+    { token lexbuf }
   | '(' | ')' | '+' | '-'
   | '*' | '/' | '=' | '<'
-  | '>'                       { create_symbol lexbuf }
+  | '>' | ':'                 { create_symbol lexbuf }
   | "<=" | "if" | "then"
   | "else" | "let" | "in"
   | "in" | "fun" | "->"
