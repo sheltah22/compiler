@@ -1,3 +1,5 @@
+open List
+
 type lit =
   | LInt of int
   | LBool of bool
@@ -98,9 +100,9 @@ and string_of_value_parsed (v: value) : string =
   | VFun (e1, e2, t1, t2) -> ("(fun (" ^ (string_of_exp_parsed e1) ^ ": "
     ^ (string_of_type t1) ^ ") : " ^ (string_of_type t2) ^ " -> "
     ^ (string_of_exp_parsed e2) ^ ")")
-  | VFix (e1, e2, e3, t1, t2) -> ("(fix " ^ (string_of_exp_parsed e1) ^ " ( "
+  | VFix (e1, e2, e3, t1, t2) -> ("(fix " ^ (string_of_exp_parsed e1) ^ " ("
     ^ (string_of_exp_parsed e2) ^ ": " ^ (string_of_type t1) ^ ") : "
-    ^ (string_of_type t2) ^ " -> " ^ " " ^ (string_of_exp_parsed e3) ^ ")")
+    ^ (string_of_type t2) ^ " -> " ^ (string_of_exp_parsed e3) ^ ")")
 
 let rec string_of_exp (e: exp) : string =
   match e with
@@ -125,11 +127,11 @@ and string_of_value (v: value) : string =
     ^ (string_of_type t2) ^ ") :" ^ (string_of_type t2) ^ (string_of_exp e2) ^ " -> "
     ^ (string_of_exp e3))
 
-let type_equals (t1: typ) (t2: typ) : bool =
+let rec type_equals (t1: typ) (t2: typ) : bool =
   match t1, t2 with
   | TInt, TInt -> true
   | TBool, TBool -> true
-  | TFun (t1, t2), TFun (t1, t2) -> true
+  | TFun (t1, t2), TFun (t3, t4) -> (type_equals t1 t3) && (type_equals t2 t4)
   | _ -> false
 
 let type_of_bin_op_in (op: bin_op) : typ =
@@ -142,24 +144,24 @@ let type_of_bin_op_out (op: bin_op) : typ =
   | OMultiply | ODivide -> TInt
   | _ -> TBool
 
-let rec typecheck (ctx: string * typ list) (e: exp) : typ =
+let rec typecheck (ctx: (string * typ) list) (e: exp) : typ =
   match e with
   | EVal (VLit (LInt _)) -> TInt
   | EVal (VLit (LBool _)) -> TBool
   | EVal (VFun (EVar s, e, t1, t2)) ->
     let e_type = typecheck (cons (s, t1) ctx) e in
-    if type_equals e_type t2 then t2
+    if type_equals e_type t2 then TFun (t1, t2)
     else failwith ("Function typechecking failed, expected return type: "
-    ^ (string_of_type t2) ^ ", actual: " ^ (string_of_type e_type))
-  | EVal (VFun (EVar f, EVar s, e, t1, t2)) ->
-    let e_type = typecheck (cons (f, t2) (cons (s, t1) ctx)) in
-    if type_equals e_type t2 then t2
+    ^ (string_of_type (TFun(t1, t2))) ^ ", actual: " ^ (string_of_type (TFun (t1, e_type))))
+  | EVal (VFix (EVar f, EVar s, e, t1, t2)) ->
+    let e_type = typecheck (cons (f, TFun(t1,t2)) (cons (s, t1) ctx)) e in
+    if type_equals e_type t2 then TFun (t1, t2)
     else failwith ("Fixpoint typechecking failed, expected return type: "
-    ^ (string_of_type t2) ^ ", actual: " ^ (string_of_type e_type))
+    ^ (string_of_type (TFun (t1, t2))) ^ ", actual: " ^ (string_of_type (TFun (t1, e_type))))
   | EBinOp (op, e1, e2) ->
     let in_type = type_of_bin_op_in op in
-    let e1_type = typecheck e1 in
-    let e2_type = typecheck e2 in
+    let e1_type = typecheck ctx e1 in
+    let e2_type = typecheck ctx e2 in
     if (type_equals e1_type in_type) && (type_equals e2_type in_type) then type_of_bin_op_out op
     else failwith ("Binary op typechecking failed, expected input type: "
     ^ (string_of_type in_type) ^ ", actual: " ^ (string_of_type e1_type)
@@ -180,7 +182,7 @@ let rec typecheck (ctx: string * typ list) (e: exp) : typ =
     let e2_type = typecheck (cons (s, t) ctx) e2 in
     if (type_equals t e1_type) then e2_type
     else failwith ("Let typechecking failed, expected binding type: "
-    ^ (string_of_type t) ", actual: " ^ (string_of_type e1_type))
+    ^ (string_of_type t) ^ ", actual: " ^ (string_of_type e1_type))
   | EFunCall (e1, e2) ->
     let e1_type = typecheck ctx e1 in
     let e2_type = typecheck ctx e2 in
@@ -193,6 +195,7 @@ let rec typecheck (ctx: string * typ list) (e: exp) : typ =
       end
     | _ -> failwith ("Fun call typechecking error, first expression should be"
       ^ " of type function, actual: " ^ (string_of_type e1_type))
+  | _ -> failwith ("Typechecking failed, unrecognized formatting" ^ (string_of_exp e))
 
 let rec subst (v: value) (s: string) (e: exp) : exp =
   match e with

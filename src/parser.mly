@@ -38,6 +38,8 @@
 prog:
   | e=exp EOF  { e }
 
+(* Look back at function application *)
+
 exp:
   | e1=base_exp op=bin_op e2=exp                     { EBinOp (op, e1, e2) }
   | IF e1=exp THEN e2=exp ELSE e3=exp                { EIf (e1, e2, e3) }
@@ -57,15 +59,16 @@ bin_op:
   | EQUALS { OEquals }
 
 typ:
-  | TINT   { TInt }
-  | TBOOL  { TBool }
+  | TINT                { TInt }
+  | TBOOL               { TBool }
   | t1=typ ARROW t2=typ { TFun(t1, t2) }
+  | LPAREN t=typ RPAREN { t }
 
 base_exp:
   | FUN LPAREN n=NAME COLON t1=typ RPAREN
-      COLON t2=typ ARROW e=exp            { EVal (VFun (EVar n, e, t1, t2)) }
+    COLON t2=typ ARROW e=exp              { EVal (VFun (EVar n, e, t1, t2)) }
   | FIX n1=NAME LPAREN n2=NAME COLON t1=typ RPAREN
-      COLON t2=typ ARROW e=exp            { EVal (VFix (EVar n1, EVar n2, e, t1, t2)) }
+    COLON t2=typ ARROW e=exp              { EVal (VFix (EVar n1, EVar n2, e, t1, t2)) }
   | i=INT                                 { EVal (VLit (LInt i)) }
   | b=BOOL                                { EVal (VLit (LBool b)) }
   | n=NAME                                { EVar n }
