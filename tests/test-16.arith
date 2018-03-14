@@ -1,0 +1,3 @@
+let pairsum : (int * int) -> int =
+  fun (x: (int * int)) : int -> (fst x) + (snd x) in
+pairsum (73, 142)

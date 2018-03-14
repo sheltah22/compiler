@@ -65,6 +65,18 @@ Test "test-fix-multi-params"
   TestTools: compiler
   Command: $compiler tests/test-12.arith | diff tests/test-12.out -
 
+Test "test-pairs"
+  TestTools: compiler
+  Command: $compiler tests/test-16.arith | diff tests/test-16.out -
+
+Test "test-lists-simple"
+  TestTools: compiler
+  Command: $compiler tests/test-17.arith | diff tests/test-17.out -
+
+Test "test-lists-complex"
+  TestTools: compiler
+  Command: $compiler tests/test-18.arith | diff tests/test-18.out -
+
 
 Test "test-plus-parse"
   TestTools: compiler

@@ -19,11 +19,18 @@ type typ =
   | TInt
   | TBool
   | TFun of typ * typ
+  | TUnit
+  | TPair of typ * typ
+  | TList of typ
 
 type value =
   | VLit of lit
   | VFun of exp * exp * typ * typ
   | VFix of exp * exp * exp * typ * typ
+  | VUnit
+  | VPair of exp * exp
+  | VEmptyList of typ
+  | VCons of exp * exp
 and exp =
   | EVal of value
   | EBinOp of bin_op * exp * exp
@@ -31,6 +38,11 @@ and exp =
   | EVar of string
   | ELet of exp * exp * exp * typ
   | EFunCall of exp * exp
+  | EFirst of exp
+  | ESecond of exp
+  | EHead of exp
+  | ETail of exp
+  | EEmpty of exp
 
 let string_of_op (op: bin_op) : string =
   match op with
@@ -49,6 +61,9 @@ let rec string_of_type (t: typ) : string =
   | TInt -> "int"
   | TBool -> "bool"
   | TFun (t1, t2) -> ((string_of_type t1) ^ " -> " ^ (string_of_type t2))
+  | TUnit -> "unit"
+  | TPair (t1, t2) -> ("(" ^ (string_of_type t1) ^ " * " ^ (string_of_type t2) ^ ")")
+  | TList t -> ("[" ^ (string_of_type t) ^ "]")
 
 (* Copied from Matthias Braun at
  * https://stackoverflow.com/questions/9863036/ocaml-function-parameter-pattern-matching-for-strings *)
@@ -93,6 +108,11 @@ let rec string_of_exp_parsed (e: exp) : string =
       ^ (string_of_exp_parsed expr2) ^ " in " ^ (string_of_exp_parsed expr3) ^ ")")
   | EFunCall (expr1, expr2) -> ("(" ^ (string_of_exp_parsed expr1) ^ " "
     ^ (string_of_exp_parsed expr2) ^ ")")
+  | EFirst expr -> ("(fst " ^ (string_of_exp_parsed expr) ^ ")")
+  | ESecond expr -> ("(snd " ^ (string_of_exp_parsed expr) ^ ")")
+  | EHead expr -> ("(head " ^ (string_of_exp_parsed expr) ^ ")")
+  | ETail expr -> ("(tail " ^ (string_of_exp_parsed expr) ^ ")")
+  | EEmpty expr -> ("(empty? " ^ (string_of_exp_parsed expr) ^ ")")
 and string_of_value_parsed (v: value) : string =
   match v with
   | VLit (LInt i) -> string_of_int i
@@ -103,6 +123,10 @@ and string_of_value_parsed (v: value) : string =
   | VFix (e1, e2, e3, t1, t2) -> ("(fix " ^ (string_of_exp_parsed e1) ^ " ("
     ^ (string_of_exp_parsed e2) ^ ": " ^ (string_of_type t1) ^ ") : "
     ^ (string_of_type t2) ^ " -> " ^ (string_of_exp_parsed e3) ^ ")")
+  | VUnit -> "()"
+  | VPair (e1, e2) -> ("(" ^ (string_of_exp_parsed e1) ^ ", " ^ (string_of_exp_parsed e2) ^ ")")
+  | VEmptyList t -> ("([] : " ^ (string_of_type t) ^ ")")
+  | VCons (e1, e2) -> ("(" ^ (string_of_exp_parsed e1) ^ " :: " ^ (string_of_exp_parsed e2) ^ ")")
 
 let rec string_of_exp (e: exp) : string =
   match e with
@@ -117,21 +141,33 @@ let rec string_of_exp (e: exp) : string =
     ("let " ^ (string_of_exp e1) ^ " : " ^ (string_of_type t) ^ " = "
     ^ (string_of_exp e2) ^ " in\n    " ^ (string_of_exp e3))
   | EFunCall (e1, e2) -> ((string_of_exp e1) ^ " " ^ (string_of_exp e2))
+  | EFirst expr -> ("fst " ^ (string_of_exp expr))
+  | ESecond expr -> ("snd " ^ (string_of_exp expr))
+  | EHead expr -> ("head " ^ (string_of_exp expr))
+  | ETail expr -> ("tail " ^ (string_of_exp expr))
+  | EEmpty expr -> ("empty? " ^ (string_of_exp expr))
 and string_of_value (v: value) : string =
   match v with
   | VLit (LInt i) -> string_of_int i
   | VLit (LBool b) -> string_of_bool b
   | VFun (e1, e2, t1, t2) -> ("fun (" ^ (string_of_exp e1) ^ ": "
     ^ (string_of_type t1) ^ ") : " ^ (string_of_type t2) ^ " -> " ^ (string_of_exp e2))
-  | VFix (e1, e2, e3, t1, t2) -> ("fix (" ^ (string_of_exp e1) ^ ": "
-    ^ (string_of_type t2) ^ ") :" ^ (string_of_type t2) ^ (string_of_exp e2) ^ " -> "
+  | VFix (e1, e2, e3, t1, t2) -> ("fix " ^ (string_of_exp e1) ^ " (" ^ (string_of_exp e2) ^ ": "
+    ^ (string_of_type t2) ^ ") : " ^ (string_of_type t2) ^ " -> "
     ^ (string_of_exp e3))
+  | VUnit -> "()"
+  | VPair (e1, e2) -> ("(" ^ (string_of_exp e1) ^ ", " ^ (string_of_exp e2) ^ ")")
+  | VEmptyList t -> ("[] : " ^ (string_of_type t))
+  | VCons (e1, e2) -> ((string_of_exp e1) ^ " :: " ^ (string_of_exp e2))
 
 let rec type_equals (t1: typ) (t2: typ) : bool =
   match t1, t2 with
   | TInt, TInt -> true
   | TBool, TBool -> true
   | TFun (t1, t2), TFun (t3, t4) -> (type_equals t1 t3) && (type_equals t2 t4)
+  | TUnit, TUnit -> true
+  | TPair (t1, t2), TPair (t3, t4) -> (type_equals t1 t3) && (type_equals t2 t4)
+  | TList t1, TList t2 -> (type_equals t1 t2)
   | _ -> false
 
 let type_of_bin_op_in (op: bin_op) : typ =
@@ -148,16 +184,30 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) : typ =
   match e with
   | EVal (VLit (LInt _)) -> TInt
   | EVal (VLit (LBool _)) -> TBool
-  | EVal (VFun (EVar s, e, t1, t2)) ->
-    let e_type = typecheck (cons (s, t1) ctx) e in
+  | EVal (VFun (EVar s, e', t1, t2)) ->
+    let e_type = typecheck (cons (s, t1) ctx) e' in
     if type_equals e_type t2 then TFun (t1, t2)
     else failwith ("Function typechecking failed, expected return type: "
-    ^ (string_of_type (TFun(t1, t2))) ^ ", actual: " ^ (string_of_type (TFun (t1, e_type))))
+    ^ (string_of_type (TFun (t1, t2))) ^ ", actual: " ^ (string_of_type (TFun (t1, e_type))))
   | EVal (VFix (EVar f, EVar s, e, t1, t2)) ->
     let e_type = typecheck (cons (f, TFun(t1,t2)) (cons (s, t1) ctx)) e in
     if type_equals e_type t2 then TFun (t1, t2)
     else failwith ("Fixpoint typechecking failed, expected return type: "
     ^ (string_of_type (TFun (t1, t2))) ^ ", actual: " ^ (string_of_type (TFun (t1, e_type))))
+  | EVal (VUnit) -> TUnit
+  | EVal (VPair (e1, e2)) -> TPair ((typecheck ctx e1), (typecheck ctx e2))
+  | EVal (VEmptyList t) -> TList t
+  | EVal (VCons (e1, e2)) ->
+    begin
+    let e1_type = (typecheck ctx e1) in
+    let e2_type = (typecheck ctx e2) in
+    match e1_type, e2_type with
+    | t1, TList t2 -> (if (type_equals t1 t2) then TList t1
+      else failwith ("Cons typechecking failed, e1 should have type of contents"
+      ^ " of e2, actual: " ^ (string_of_type e1_type) ^ ", " ^ (string_of_type e2_type)))
+    | _ -> failwith ("Cons typechecking failed, e2 should have type list, "
+      ^ "actual: " ^ (string_of_type e2_type))
+    end
   | EBinOp (op, e1, e2) ->
     let in_type = type_of_bin_op_in op in
     let e1_type = typecheck ctx e1 in
@@ -184,6 +234,7 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) : typ =
     else failwith ("Let typechecking failed, expected binding type: "
     ^ (string_of_type t) ^ ", actual: " ^ (string_of_type e1_type))
   | EFunCall (e1, e2) ->
+    begin
     let e1_type = typecheck ctx e1 in
     let e2_type = typecheck ctx e2 in
     match e1_type with
@@ -191,10 +242,51 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) : typ =
       begin
         if type_equals t1 e2_type then t2
         else failwith ("Fun call typechecking failed, expected input type: "
-        ^ (string_of_type t1) ^ ", actual: " ^ (string_of_type e2_type))
+        ^ (string_of_type t1) ^ ", actual: " ^ (string_of_type e2_type) ^ (string_of_exp e1) ^ " " ^ (string_of_exp e2))
       end
     | _ -> failwith ("Fun call typechecking error, first expression should be"
       ^ " of type function, actual: " ^ (string_of_type e1_type))
+    end
+  | EFirst ex ->
+    begin
+    let e_type = (typecheck ctx ex) in
+    match e_type with
+    | TPair (t1, t2) -> t1
+    | _ -> failwith ("First typechecking failed, exp should be of type pair,"
+      ^ " actual: " ^ (string_of_type e_type))
+    end
+  | ESecond ex ->
+    begin
+    let e_type = (typecheck ctx ex) in
+    match e_type with
+    | TPair (t1, t2) -> t2
+    | _ -> failwith ("Second typechecking failed, exp should be of type pair,"
+      ^ " actual: " ^ (string_of_type e_type))
+    end
+  | EHead ex ->
+    begin
+    let e_type = (typecheck ctx ex) in
+    match e_type with
+    | TList t -> t
+    | _ -> failwith ("Head typechecking failed, exp should be of type list, "
+      ^ "actual: " ^ (string_of_type e_type))
+    end
+  | ETail ex ->
+    begin
+    let e_type = (typecheck ctx ex) in
+    match e_type with
+    | TList t -> TList t
+    | _ -> failwith ("Tail typechecking failed, exp should be of type list, "
+      ^ "actual: " ^ (string_of_type e_type))
+    end
+  | EEmpty ex ->
+    begin
+    let e_type = (typecheck ctx ex) in
+    match e_type with
+    | TList t -> TBool
+    | _ -> failwith ("empty? typechecking failed, exp should be of type list, "
+      ^ "actual: " ^ (string_of_type e_type))
+    end
   | _ -> failwith ("Typechecking failed, unrecognized formatting" ^ (string_of_exp e))
 
 let rec subst (v: value) (s: string) (e: exp) : exp =
@@ -202,7 +294,7 @@ let rec subst (v: value) (s: string) (e: exp) : exp =
   | EVal v' ->
     begin
       match v' with
-      | VLit l -> EVal (VLit l)
+      | VLit l -> e
       | VFun (EVar str, e', t1, t2) -> (if (compare str s) = 0
         then e
         else EVal (VFun (EVar str, (subst v s e'), t1, t2)))
@@ -213,6 +305,10 @@ let rec subst (v: value) (s: string) (e: exp) : exp =
         | _,0 -> e
         | _ -> EVal (VFix (EVar f, EVar x, (subst v s e'), t1, t2))
         end
+      | VUnit -> e
+      | VPair (e1, e2) -> EVal (VPair ((subst v s e1), (subst v s e2)))
+      | VEmptyList t -> EVal (VEmptyList t)
+      | VCons (e1, e2) -> EVal (VCons ((subst v s e1), (subst v s e2)))
       | _ -> failwith "Substitution: unexpected value"
     end
   | EBinOp (op, e1, e2) -> EBinOp (op, (subst v s e1 ), (subst v s e2))
@@ -221,6 +317,11 @@ let rec subst (v: value) (s: string) (e: exp) : exp =
   | ELet (EVar str, e1, e2, t) -> (if (compare str s) = 0 then e
     else ELet (EVar str, (subst v s e1), (subst v s e2), t))
   | EFunCall (f, e2) -> EFunCall ((subst v s f), (subst v s e2))
+  | EFirst ex -> EFirst (subst v s ex)
+  | ESecond ex -> ESecond (subst v s ex)
+  | EHead ex -> EHead (subst v s ex)
+  | ETail ex -> ETail (subst v s ex)
+  | EEmpty ex -> EEmpty (subst v s ex)
   | _ -> failwith "Substitution: unrecognized expression"
 
 let unpack_int_val v =
@@ -295,6 +396,28 @@ let rec step (e: exp) : exp =
         let subst_x = subst (exp_to_value e2) x e in
         subst (exp_to_value e1) f subst_x
       | _ -> failwith ("Interpretation: issue with function formatting")
+    end
+  | EFirst (EVal (VPair (e1, e2))) -> e1
+  | ESecond (EVal (VPair (e1, e2))) -> e2
+  | EHead ex ->
+    begin
+    match ex with
+    | EVal (VEmptyList _) -> failwith ("Attempted to take hd of empty list")
+    | EVal (VCons (e1, e2)) -> e1
+    | _ -> failwith("Typechecking missed hd")
+    end
+  | ETail ex ->
+    begin
+    match ex with
+    | EVal (VEmptyList _) -> failwith ("Attempted to take tl of empty list")
+    | EVal (VCons (e1, e2)) -> e2
+    | _ -> failwith("Typechecking missed tl")
+    end
+  | EEmpty ex ->
+    begin
+    match ex with
+    | EVal (VEmptyList _) -> EVal (VLit (LBool true))
+    | _ -> EVal (VLit (LBool false))
     end
   | _ -> failwith "Interpretation: unrecognized expression"
 
