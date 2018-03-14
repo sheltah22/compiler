@@ -19,6 +19,21 @@ The compiler can be run using `./compiler.native`.
 
 ## Changelog
 
+#### Assignment 5
+1. New Features
+  - Typechecking done before attempting to run the program,
+    Types include int, bool, t1 -> t2, unit, t1 * t2, [t] (a homogeneous list)
+  - Pairs of the form `(x,y)` added
+  - Homogeneous lists of the form `(x :: [] : t)` added
+  - Functions (as keywords) pertaining to lists and pairs: fst, snd (pairs) and hd, tl, empty? (lists)
+2. Changes to existing features
+  - syntax for let bindings and function declarations updated to include types:
+    `let x : t = e1 in e2`
+    `fun (x:t1) : t2 -> e`
+    `fix f (x:t1) : t2 -> e2`
+3. Known Bugs
+  - Must use parenthesis when calling a function with multiple parameters: `(f x) y`
+
 #### Assignment 4
 1. New Features
   - Let bindings of the form `let x = 10 in ...`
