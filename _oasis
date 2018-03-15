@@ -77,6 +77,14 @@ Test "test-lists-complex"
   TestTools: compiler
   Command: $compiler tests/test-18.arith | diff tests/test-18.out -
 
+Test "test-refs-simple"
+  TestTools: compiler
+  Command: $compiler tests/test-19.arith | diff tests/test-19.out -
+
+Test "test-refs-complex"
+  TestTools: compiler
+  Command: $compiler tests/test-20.arith | diff tests/test-20.out -
+
 
 Test "test-plus-parse"
   TestTools: compiler

@@ -39,6 +39,10 @@ let symbols : (string * Parser.token) list =
   ; ("hd", HEAD)
   ; ("tl", TAIL)
   ; ("empty?", EMPTY)
+  ; ("ref", REF)
+  ; (":=", SET)
+  ; ("!", BANG)
+  ; (";", SEMI)
   ]
 
 let create_symbol lexbuf =
@@ -62,7 +66,7 @@ rule token = parse
   | '(' | ')' | '+' | '-'
   | '*' | '/' | '=' | '<'
   | '>' | ':' | ',' | '['
-  | ']'                       { create_symbol lexbuf }
+  | ']' | '!' | ';'           { create_symbol lexbuf }
   | "<=" | "if" | "then"
   | "else" | "let" | "in"
   | "in" | "fun" | "->"
@@ -70,7 +74,7 @@ rule token = parse
   | "bool" | "()" | "unit"
   | "fst" | "snd" | "[]"
   | "::" | "hd" | "tl"
-  | "empty?"                  { create_symbol lexbuf }
+  | "empty?" | "ref" | ":="   { create_symbol lexbuf }
   | "true" | "false"          { BOOL (bool_of_string (lexeme lexbuf)) }
   | var_name                  { create_var lexbuf }
   | _ as c                    { raise @@ Lexer_error ("Unexpected character: " ^ Char.escaped c) }

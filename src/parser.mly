@@ -40,11 +40,30 @@
 %token HEAD       (* hd *)
 %token TAIL       (* tl *)
 %token EMPTY      (* empty? *)
+%token REF        (* ref *)
+%token SET        (* := *)
+%token BANG       (* ! *)
+%token SEMI       (* ; *)
 
 %token EOF
 
 %start <Lang.exp> prog
 
+%left LET IN
+%left SEMI
+
+%left SET
+
+
+%left ARROW
+%left PLUS MINUS
+%left DIVIDE TIMES
+%right CONS
+%left LSTHN GTTHN LEQ GEQ EQUALS
+%nonassoc FIRST SECOND HEAD TAIL EMPTY
+%left COLON
+%nonassoc BANG
+%nonassoc REF
 %%
 
 prog:
@@ -53,18 +72,33 @@ prog:
 (* Look back at function application *)
 
 exp:
-  | e1=base_exp op=bin_op e2=exp                     { EBinOp (op, e1, e2) }
+  | e=base_exp                                       { e }
+  | e1=exp SEMI e2=exp                               { ESequence (e1, e2) }
+  | f=base_exp e=exp                                 { EFunCall (f, e) }
+  | e1=exp SET e2=exp                                { EAssign (e1, e2) }
   | IF e1=exp THEN e2=exp ELSE e3=exp                { EIf (e1, e2, e3) }
   | LET n=NAME COLON t=typ EQUALS e1=exp IN e2=exp   { ELet (EVar n, e1, e2, t) }
-  | FIRST e=exp                                      { EFirst e }
-  | SECOND e=exp                                     { ESecond e }
-  | HEAD e=exp                                       { EHead e }
-  | TAIL e=exp                                       { ETail e }
-  | EMPTY e=exp                                      { EEmpty e }
-  | f=base_exp e=exp                                 { EFunCall (f, e) }
-  | e=base_exp                                       { e }
+  | e1=exp PLUS e2=exp { (EBinOp (OAdd, e1, e2)) }
+  | e1=exp MINUS e2=exp { (EBinOp (OSubtract, e1, e2)) }
+  | e1=exp TIMES e2=exp { (EBinOp (OMultiply, e1, e2)) }
+  | e1=exp DIVIDE e2=exp { (EBinOp (ODivide, e1, e2)) }
+  | e1=exp LEQ e2=exp { (EBinOp (OLessThanEq, e1, e2)) }
+  | e1=exp GEQ e2=exp { (EBinOp (OGreaterThanEq, e1, e2)) }
+  | e1=exp GTTHN e2=exp { (EBinOp (OGreaterThan, e1, e2)) }
+  | e1=exp LSTHN e2=exp { (EBinOp (OLessThan, e1, e2)) }
+  | e1=exp EQUALS e2=exp { (EBinOp (OEquals, e1, e2)) }
+(*   | PLUS   { OAdd }
+  | LSTHN  { OLessThan } *)
+(*  | e1=exp op=bin_op e2=exp                          { EBinOp (op, e1, e2) }*)
+  | BANG e=exp                                       { EBang e }
+  | FIRST e=exp                           { EFirst e }
+  | SECOND e=exp                          { ESecond e }
+  | HEAD e=exp                            { EHead e }
+  | TAIL e=exp                            { ETail e }
+  | EMPTY e=exp                           { EEmpty e }
+  | REF e=exp                             { ERef e }
 
-bin_op:
+(*bin_op:
   | PLUS   { OAdd }
   | MINUS  { OSubtract }
   | TIMES  { OMultiply }
@@ -73,7 +107,7 @@ bin_op:
   | GEQ    { OGreaterThanEq }
   | LSTHN  { OLessThan }
   | GTTHN  { OGreaterThan }
-  | EQUALS { OEquals }
+  | EQUALS { OEquals } *)
 
 typ:
   | TINT                               { TInt }
@@ -82,6 +116,7 @@ typ:
   | TUNIT                              { TUnit }
   | LPAREN t1=typ TIMES t2=typ RPAREN  { TPair (t1,t2) }
   | LSQUARE t=typ RSQUARE              { TList t }
+  | LSTHN t=typ GTTHN                  { TRef t }
   | LPAREN t=typ RPAREN                { t }
 
 base_exp:
@@ -89,11 +124,11 @@ base_exp:
     COLON t2=typ ARROW e=exp              { EVal (VFun (EVar n, e, t1, t2)) }
   | FIX n1=NAME LPAREN n2=NAME COLON t1=typ RPAREN
     COLON t2=typ ARROW e=exp              { EVal (VFix (EVar n1, EVar n2, e, t1, t2)) }
-  | LPAREN e1=exp COMMA e2=exp RPAREN     { EVal (VPair (e1, e2)) }
-  | EMPTYLIST COLON t=typ                 { EVal (VEmptyList t) }
   | e1=exp CONS e2=exp                    { EVal (VCons (e1, e2)) }
+  | EMPTYLIST COLON t=typ                 { EVal (VEmptyList t) }
   | i=INT                                 { EVal (VLit (LInt i)) }
   | b=BOOL                                { EVal (VLit (LBool b)) }
   | n=NAME                                { EVar n }
-  | LPAREN e=exp RPAREN                   { e }
   | UNIT                                  { EVal VUnit }
+  | LPAREN e=exp RPAREN                   { e }
+  | LPAREN e1=exp COMMA e2=exp RPAREN     { EVal (VPair (e1, e2)) }
