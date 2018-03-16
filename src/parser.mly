@@ -31,8 +31,6 @@
 %token UNIT       (* () *)
 %token TUNIT      (* unit *)
 %token COMMA      (* , *)
-%token FIRST      (* fst *)
-%token SECOND     (* snd *)
 %token LSQUARE    (* [ *)
 %token RSQUARE    (* ] *)
 %token EMPTYLIST  (* [] *)
@@ -59,8 +57,8 @@
 %left LSTHN GTTHN LEQ GEQ EQUALS
 %left PLUS MINUS
 %left DIVIDE TIMES
-%right CONS
-%nonassoc FIRST SECOND HEAD TAIL EMPTY
+%right CONS LSQUARE RSQUARE
+%nonassoc HEAD TAIL EMPTY
 %left COLON
 %nonassoc BANG
 %nonassoc REF
@@ -92,12 +90,11 @@ exp:
   | LSTHN  { OLessThan } *)
 (*  | e1=exp op=bin_op e2=exp                        { EBinOp (op, e1, e2) }*)
   | BANG e=exp                                       { EBang e }
-  | FIRST e=exp                                      { EFirst e }
-  | SECOND e=exp                                     { ESecond e }
   | HEAD e=exp                                       { EHead e }
   | TAIL e=exp                                       { ETail e }
   | EMPTY e=exp                                      { EEmpty e }
   | REF e=exp                                        { ERef e }
+  | e1=exp LSQUARE e2=exp RSQUARE                    { ENth (e1, e2) }
 
 (*bin_op:
   | PLUS   { OAdd }
@@ -115,10 +112,14 @@ typ:
   | TBOOL                              { TBool }
   | t1=typ ARROW t2=typ                { TFun (t1, t2) }
   | TUNIT                              { TUnit }
-  | LPAREN t1=typ TIMES t2=typ RPAREN  { TPair (t1,t2) }
+  | LPAREN t1=typ TIMES t2=ttyp RPAREN { TTuple (t1 :: t2) }
   | LSQUARE t=typ RSQUARE              { TList t }
   | LSTHN t=typ GTTHN                  { TRef t }
   | LPAREN t=typ RPAREN                { t }
+
+ttyp:
+  | t=typ                              { (t :: []) }
+  | t1=typ TIMES t2=ttyp               { (t1 :: t2) }
 
 base_exp:
   | FUN LPAREN n=NAME COLON t1=typ RPAREN
@@ -132,4 +133,8 @@ base_exp:
   | n=NAME                                { EVar n }
   | UNIT                                  { EVal VUnit }
   | LPAREN e=exp RPAREN                   { e }
-  | LPAREN e1=exp COMMA e2=exp RPAREN     { EVal (VPair (e1, e2)) }
+  | LPAREN e=exp COMMA t=tuple RPAREN     { EVal (VTuple (e :: t)) }
+
+tuple:
+  | e=exp                                 { (e :: []) }
+  | e=exp COMMA t=tuple                   { (e :: t) }

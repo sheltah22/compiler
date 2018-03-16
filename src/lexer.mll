@@ -30,8 +30,6 @@ let symbols : (string * Parser.token) list =
   ; ("()", UNIT)
   ; ("unit", TUNIT)
   ; (",", COMMA)
-  ; ("fst", FIRST)
-  ; ("snd", SECOND)
   ; ("[", LSQUARE)
   ; ("]", RSQUARE)
   ; ("[]", EMPTYLIST)
@@ -75,7 +73,7 @@ rule token = parse
   | "in" | "fun" | "->"
   | ">=" | "fix" | "int"
   | "bool" | "()" | "unit"
-  | "fst" | "snd" | "[]"
+  | "[]" 
   | "::" | "hd" | "tl"
   | "empty?" | "ref" | ":="
   | "while" | "do" | "end"    { create_symbol lexbuf }

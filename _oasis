@@ -65,7 +65,7 @@ Test "test-fix-multi-params"
   TestTools: compiler
   Command: $compiler tests/test-12.arith | diff tests/test-12.out -
 
-Test "test-pairs"
+Test "test-tuples-fun"
   TestTools: compiler
   Command: $compiler tests/test-16.arith | diff tests/test-16.out -
 
@@ -89,6 +89,9 @@ Test "test-while"
   TestTools: compiler
   Command: $compiler tests/test-21.arith | diff tests/test-21.out -
 
+Test "test-tuples-ref"
+  TestTools: compiler
+  Command: $compiler tests/test-22.arith | diff tests/test-22.out -
 
 Test "test-plus-parse"
   TestTools: compiler
