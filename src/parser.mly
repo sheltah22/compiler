@@ -77,6 +77,7 @@ exp:
   | e1=exp SET e2=exp                                { EAssign (e1, e2) }
   | IF e1=exp THEN e2=exp ELSE e3=exp                { EIf (e1, e2, e3) }
   | LET n=NAME COLON t=typ EQUALS e1=exp IN e2=exp   { ELet (EVar n, e1, e2, t) }
+  | LET n=NAME EQUALS e1=exp IN e2=exp               { EInferLet (EVar n, e1, e2) }
   | e1=exp PLUS e2=exp                               { (EBinOp (OAdd, e1, e2)) }
   | e1=exp MINUS e2=exp                              { (EBinOp (OSubtract, e1, e2)) }
   | e1=exp TIMES e2=exp                              { (EBinOp (OMultiply, e1, e2)) }

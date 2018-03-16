@@ -62,7 +62,7 @@ let var_name   = ['a'-'z'  'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_' ]*
 
 rule token = parse
   | eof                       { EOF }
-  | digit+                    { INT (int_of_string (lexeme lexbuf)) }
+  | '-'? digit+               { INT (int_of_string (lexeme lexbuf)) }
   | whitespace+ | newline+    { token lexbuf }
   | '(' | ')' | '+' | '-'
   | '*' | '/' | '=' | '<'
@@ -73,7 +73,7 @@ rule token = parse
   | "in" | "fun" | "->"
   | ">=" | "fix" | "int"
   | "bool" | "()" | "unit"
-  | "[]" 
+  | "[]"
   | "::" | "hd" | "tl"
   | "empty?" | "ref" | ":="
   | "while" | "do" | "end"    { create_symbol lexbuf }

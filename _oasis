@@ -93,6 +93,11 @@ Test "test-tuples-ref"
   TestTools: compiler
   Command: $compiler tests/test-22.arith | diff tests/test-22.out -
 
+Test "test-infer-let"
+  TestTools: compiler
+  Command: $compiler tests/test-23.arith | diff tests/test-23.out -
+
+
 Test "test-plus-parse"
   TestTools: compiler
   Command: $compiler -parse tests/test-1.arith | diff tests/test-1.parse.out -

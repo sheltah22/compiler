@@ -23,6 +23,7 @@ type typ =
   | TTuple of typ list
   | TList of typ
   | TRef of typ
+  | TDynamic
 
 type value =
   | VLit of lit
@@ -49,6 +50,7 @@ and exp =
   | ESequence of exp * exp
   | EWhile of exp * exp * exp
   | ENth of exp * exp
+  | EInferLet of exp * exp * exp
 
 let string_of_op (op: bin_op) : string =
   match op with
@@ -71,6 +73,7 @@ let rec string_of_type (t: typ) : string =
   | TTuple (t :: rest) -> ("(" ^ (string_of_type t) ^ (String.concat "" (map (fun x -> " * " ^ x) (map string_of_type rest)) ^ ")"))
   | TList t -> ("[" ^ (string_of_type t) ^ "]")
   | TRef t -> ("<" ^ (string_of_type t) ^ ">")
+  | TDynamic -> ("dynamic")
 
 let string_of_bin_op (op: bin_op) =
   match op with
@@ -108,6 +111,8 @@ let rec string_of_exp_parsed (e: exp) : string =
   | ESequence (expr1, expr2) -> ("(; " ^ (string_of_exp_parsed expr1) ^ " " ^ (string_of_exp_parsed expr2) ^ ")")
   | EWhile (expr1, expr2, expr3) -> ("(while " ^ (string_of_exp_parsed expr1) ^ " " ^ (string_of_exp_parsed expr3) ^ ")")
   | ENth (expr1, expr2) -> ("(nth " ^ (string_of_exp_parsed expr1) ^ " " ^ (string_of_exp_parsed expr2) ^ ")")
+  | EInferLet (e1, e2, e3) -> ("(let " ^ (string_of_exp_parsed e1)
+    ^ " = " ^ (string_of_exp_parsed e2) ^ " in " ^ (string_of_exp_parsed e3) ^ ")")
 and string_of_value_parsed (v: value) : string =
   match v with
   | VLit (LInt i) -> string_of_int i
@@ -147,6 +152,8 @@ let rec string_of_exp (e: exp) : string =
   | ESequence (e1, e2) -> ((string_of_exp e1) ^ "; " ^ (string_of_exp e2))
   | EWhile (e1, e2, e3) -> ("while " ^ (string_of_exp e1) ^ " do " ^ (string_of_exp e3) ^ " end")
   | ENth (e1, e2) -> ("nth " ^ (string_of_exp e1) ^ " " ^ (string_of_exp e2) ^ ")")
+  | EInferLet (e1, e2, e3) -> ("let " ^ (string_of_exp_parsed e1)
+    ^ " = " ^ (string_of_exp_parsed e2) ^ " in\n    " ^ (string_of_exp_parsed e3))
 and string_of_value (v: value) : string =
   match v with
   | VLit (LInt i) -> string_of_int i
@@ -336,6 +343,9 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) : typ =
       | t -> failwith ("Nth typechecking failed, should take tuple first, "
         ^ "actual: " ^ (string_of_type t))
     end
+  | EInferLet (EVar s, e1, e2) ->
+    let e1_type = typecheck ctx e1 in
+    let e2_type = typecheck (cons (s, e1_type) ctx) e2 in e2_type
   | _ -> failwith ("Typechecking failed, unrecognized formatting" ^ (string_of_exp e))
 
 let rec subst (v: value) (s: string) (e: exp) : exp =
@@ -382,6 +392,8 @@ let rec subst (v: value) (s: string) (e: exp) : exp =
   | ESequence (e1, e2) -> ESequence ((subst v s e1), (subst v s e2))
   | EWhile (e1, e2, e3) -> EWhile ((subst v s e1), (subst v s e2), (subst v s e3))
   | ENth (e1, e2) -> (ENth ((subst v s e1), (subst v s e2)))
+  | EInferLet (EVar str, e1, e2) -> (if (compare str s) = 0 then e
+    else EInferLet (EVar str, (subst v s e1), (subst v s e2)))
   | _ -> failwith "Substitution: unrecognized expression"
 
 let interpret_bin_exp (op: bin_op) (v1: value) (v2: value) : value =
@@ -614,6 +626,16 @@ let rec step (env: (int * value) list) (e: exp) : (int * value) list * exp =
       | EVal (VTuple l) -> (env, (nth l n))
       | _ -> failwith ("Typechecking missed nth")
       end
+    end
+  | EInferLet (EVar s, e1, e2) ->
+    begin
+      let interp_e1 = not (is_value e1) in
+      if interp_e1 then
+      begin
+        match (step env e1) with
+        | env', e1' -> (env', EInferLet ((EVar s), e1', e2))
+      end
+      else (env, (subst (exp_to_value e1) s e2))
     end
   | _ -> failwith "Interpretation: unrecognized expression"
 
