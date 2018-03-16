@@ -56,7 +56,6 @@
 %left SEMI
 %nonassoc WHILE DO END
 %left SET
-%left ARROW
 %left LSTHN GTTHN LEQ GEQ EQUALS
 %left PLUS MINUS
 %left DIVIDE TIMES
