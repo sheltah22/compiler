@@ -19,6 +19,21 @@ The compiler can be run using `./compiler.native`.
 
 ## Changelog
 
+#### Assignment 6
+1. New Features
+  - Added a notion of state/environment to execution
+  - added operators `ref v` returns a reference to value v
+                    `!x` dereferences x
+                    `x := y` assignment operator
+                    `x;y` sequencing operator
+                    `while e1 do e2 end` while loop
+2. Changes to existing features
+  - Binary operators are now left associative, official
+    precedency levels established for others
+3. Known bugs
+  - Still must parenthesize funtion calls with multiple parameters in the
+    same way
+
 #### Assignment 5
 1. New Features
   - Typechecking done before attempting to run the program,
