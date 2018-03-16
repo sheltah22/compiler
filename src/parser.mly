@@ -44,6 +44,9 @@
 %token SET        (* := *)
 %token BANG       (* ! *)
 %token SEMI       (* ; *)
+%token WHILE
+%token DO
+%token END
 
 %token EOF
 
@@ -51,15 +54,13 @@
 
 %left LET IN
 %left SEMI
-
+%nonassoc WHILE DO END
 %left SET
-
-
 %left ARROW
+%left LSTHN GTTHN LEQ GEQ EQUALS
 %left PLUS MINUS
 %left DIVIDE TIMES
 %right CONS
-%left LSTHN GTTHN LEQ GEQ EQUALS
 %nonassoc FIRST SECOND HEAD TAIL EMPTY
 %left COLON
 %nonassoc BANG
@@ -74,29 +75,30 @@ prog:
 exp:
   | e=base_exp                                       { e }
   | e1=exp SEMI e2=exp                               { ESequence (e1, e2) }
+  | WHILE e1=exp DO e2=exp END e3=exp                { ESequence ((EWhile (e1, e1, e2)), e3) }
   | f=base_exp e=exp                                 { EFunCall (f, e) }
   | e1=exp SET e2=exp                                { EAssign (e1, e2) }
   | IF e1=exp THEN e2=exp ELSE e3=exp                { EIf (e1, e2, e3) }
   | LET n=NAME COLON t=typ EQUALS e1=exp IN e2=exp   { ELet (EVar n, e1, e2, t) }
-  | e1=exp PLUS e2=exp { (EBinOp (OAdd, e1, e2)) }
-  | e1=exp MINUS e2=exp { (EBinOp (OSubtract, e1, e2)) }
-  | e1=exp TIMES e2=exp { (EBinOp (OMultiply, e1, e2)) }
-  | e1=exp DIVIDE e2=exp { (EBinOp (ODivide, e1, e2)) }
-  | e1=exp LEQ e2=exp { (EBinOp (OLessThanEq, e1, e2)) }
-  | e1=exp GEQ e2=exp { (EBinOp (OGreaterThanEq, e1, e2)) }
-  | e1=exp GTTHN e2=exp { (EBinOp (OGreaterThan, e1, e2)) }
-  | e1=exp LSTHN e2=exp { (EBinOp (OLessThan, e1, e2)) }
-  | e1=exp EQUALS e2=exp { (EBinOp (OEquals, e1, e2)) }
+  | e1=exp PLUS e2=exp                               { (EBinOp (OAdd, e1, e2)) }
+  | e1=exp MINUS e2=exp                              { (EBinOp (OSubtract, e1, e2)) }
+  | e1=exp TIMES e2=exp                              { (EBinOp (OMultiply, e1, e2)) }
+  | e1=exp DIVIDE e2=exp                             { (EBinOp (ODivide, e1, e2)) }
+  | e1=exp LEQ e2=exp                                { (EBinOp (OLessThanEq, e1, e2)) }
+  | e1=exp GEQ e2=exp                                { (EBinOp (OGreaterThanEq, e1, e2)) }
+  | e1=exp GTTHN e2=exp                              { (EBinOp (OGreaterThan, e1, e2)) }
+  | e1=exp LSTHN e2=exp                              { (EBinOp (OLessThan, e1, e2)) }
+  | e1=exp EQUALS e2=exp                             { (EBinOp (OEquals, e1, e2)) }
 (*   | PLUS   { OAdd }
   | LSTHN  { OLessThan } *)
-(*  | e1=exp op=bin_op e2=exp                          { EBinOp (op, e1, e2) }*)
+(*  | e1=exp op=bin_op e2=exp                        { EBinOp (op, e1, e2) }*)
   | BANG e=exp                                       { EBang e }
-  | FIRST e=exp                           { EFirst e }
-  | SECOND e=exp                          { ESecond e }
-  | HEAD e=exp                            { EHead e }
-  | TAIL e=exp                            { ETail e }
-  | EMPTY e=exp                           { EEmpty e }
-  | REF e=exp                             { ERef e }
+  | FIRST e=exp                                      { EFirst e }
+  | SECOND e=exp                                     { ESecond e }
+  | HEAD e=exp                                       { EHead e }
+  | TAIL e=exp                                       { ETail e }
+  | EMPTY e=exp                                      { EEmpty e }
+  | REF e=exp                                        { ERef e }
 
 (*bin_op:
   | PLUS   { OAdd }

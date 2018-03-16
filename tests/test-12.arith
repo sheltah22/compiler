@@ -1,4 +1,4 @@
-let power : int -> int -> int =
+let power : int -> (int -> int) =
 fix f (x:int) : (int -> int) ->
 fun (y:int) : int ->
   if y = 0

@@ -85,6 +85,10 @@ Test "test-refs-complex"
   TestTools: compiler
   Command: $compiler tests/test-20.arith | diff tests/test-20.out -
 
+Test "test-while"
+  TestTools: compiler
+  Command: $compiler tests/test-21.arith | diff tests/test-21.out -
+
 
 Test "test-plus-parse"
   TestTools: compiler

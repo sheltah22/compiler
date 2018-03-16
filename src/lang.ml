@@ -49,6 +49,7 @@ and exp =
   | EAssign of exp * exp
   | EBang of exp
   | ESequence of exp * exp
+  | EWhile of exp * exp * exp
 
 let string_of_op (op: bin_op) : string =
   match op with
@@ -108,6 +109,7 @@ let rec string_of_exp_parsed (e: exp) : string =
   | EAssign (expr1, expr2) -> ("(:= " ^ (string_of_exp_parsed expr1) ^ " " ^ (string_of_exp_parsed expr2) ^ ")")
   | EBang expr -> ("(! " ^ (string_of_exp_parsed expr) ^ ")")
   | ESequence (expr1, expr2) -> ("(; " ^ (string_of_exp_parsed expr1) ^ " " ^ (string_of_exp_parsed expr2) ^ ")")
+  | EWhile (expr1, expr2, expr3) -> ("(while " ^ (string_of_exp_parsed expr1) ^ " " ^ (string_of_exp_parsed expr3) ^ ")")
 and string_of_value_parsed (v: value) : string =
   match v with
   | VLit (LInt i) -> string_of_int i
@@ -146,6 +148,7 @@ let rec string_of_exp (e: exp) : string =
   | EAssign (e1, e2) -> ((string_of_exp e1) ^ " := " ^ (string_of_exp e2))
   | EBang e -> ("! " ^ (string_of_exp e))
   | ESequence (e1, e2) -> ((string_of_exp e1) ^ "; " ^ (string_of_exp e2))
+  | EWhile (e1, e2, e3) -> ("while " ^ (string_of_exp e1) ^ " do " ^ (string_of_exp e3) ^ " end")
 and string_of_value (v: value) : string =
   match v with
   | VLit (LInt i) -> string_of_int i
@@ -312,6 +315,14 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) : typ =
     | _ -> failwith ("Bang typechecking failed, should take ref type, actual "
       ^ (string_of_type e_type))
     end
+  | EWhile (e1, e2, e3) ->
+    begin
+    let e1_type = (typecheck ctx e1) in
+    match e1_type with
+    | TBool -> TUnit
+    | _ -> failwith ("While typechecking failed, e1 should be of type bool, "
+      ^ "actual: " ^ (string_of_type e1_type))
+    end
   | _ -> failwith ("Typechecking failed, unrecognized formatting" ^ (string_of_exp e))
 
 let rec subst (v: value) (s: string) (e: exp) : exp =
@@ -352,6 +363,7 @@ let rec subst (v: value) (s: string) (e: exp) : exp =
   | EAssign (e1, e2) -> EAssign ((subst v s e1), (subst v s e2))
   | EBang ex -> EBang (subst v s ex)
   | ESequence (e1, e2) -> ESequence ((subst v s e1), (subst v s e2))
+  | EWhile (e1, e2, e3) -> EWhile ((subst v s e1), (subst v s e2), (subst v s e3))
   | _ -> failwith "Substitution: unrecognized expression"
 
 let unpack_int_val v =
@@ -592,6 +604,20 @@ let rec step (env: (int * value) list) (e: exp) : (int * value) list * exp =
       match (exp_to_value ex) with
       | VPtr i -> (env, EVal (assoc i env))
       | _ -> failwith ("Typechecking missed !")
+    end
+  | EWhile (e1, e2, e3) ->
+    let interp_e1 = not (is_value e1) in
+    if (interp_e1) then
+    begin
+      match (step env e1) with
+      | env', e1' -> (env', EWhile (e1', e2, e3))
+    end
+    else
+    begin
+      match (exp_to_value e1) with
+      | VLit (LBool true) -> (env, ESequence(e3, EWhile (e2, e2, e3)))
+      | VLit (LBool false) -> (env, EVal (VUnit))
+      | _ -> failwith ("Typechecking missed while")
     end
   | _ -> failwith "Interpretation: unrecognized expression"
 
