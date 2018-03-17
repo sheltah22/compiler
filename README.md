@@ -19,6 +19,15 @@ The compiler can be run using `./compiler.native`.
 
 ## Changelog
 
+#### Assignment 7 (Final)
+1. New Features
+  - Pairs replaced with tuples of arbitrary length and syntax
+    `(a, b, c) : (A * B * C)`
+2. Changes to existing features
+  - Added negative integers
+3. Known bugs
+  - [No new known bugs]
+
 #### Assignment 6
 1. New Features
   - Added a notion of state/environment to execution
