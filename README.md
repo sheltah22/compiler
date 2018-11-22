@@ -4,7 +4,7 @@
 ## Overview
 This is a compiler for a toy languages whose features I have not fully decided on yet.
 
-## Current Language Specifications
+## Current Language
 #### Types
   - Integers (ex. `1`, `-12`)
   - Functions (ex. `(fun (y:int) : int -> (y + 2))`)
@@ -34,6 +34,18 @@ This is a compiler for a toy languages whose features I have not fully decided o
     + Sequencing operator: returns the value of the last expression (ex. `x := 10; !x` returns 10)
     + While loop: (ex. `while (!x < 2) do x := !x + 1 end !x`)
 
+#### Other Features
+ - Static typechecking
+
+#### Known bugs/things to be changed
+- Multi-parameter functions can only be built with nested higher-order functions
+- Must use parenthesis when calling a function with multiple parameters: `(f x) y`
+
+#### Future work
+- Implement a simple type inference system
+- Add user-defined types + polymorphism with ML typechecking
+- Add pattern matching
+- Improve syntax for defining functions
 
 ## Building and Testing
 ### Setup Instructions
@@ -69,9 +81,9 @@ The compiler can be run using `./compiler.native`.
                     `while e1 do e2 end` while loop
 2. Changes to existing features
   - Binary operators are now left associative, official
-    precedency levels established for others
+    precedence levels established for others
 3. Known bugs
-  - Still must parenthesize funtion calls with multiple parameters in the
+  - Still must parenthesize function calls with multiple parameters in the
     same way
 
 #### Assignment 5
@@ -111,7 +123,7 @@ The compiler can be run using `./compiler.native`.
   - e_base ::= n | true | false | (exp)
   - Precedence of operators:
     + Parenthesized expressions
-    + All binary operations **(right associative)
+    + All binary operations /*/* (right associative)
     + Conditionals
 3. Known Bugs
   [No known bugs yet]
