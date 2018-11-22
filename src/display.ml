@@ -1,14 +1,7 @@
 (* display.ml *)
-open Lexer
-open Parser
-open Lang
-
-let string_of_value (v: value) : string =
-  match v with
-  | VLit (LInt i) -> string_of_int i
-  | VLit (LBool b) -> string_of_bool b
-  | VFun (e1, e2) -> ("(fun " ^ (Display.string_of_exp e1) ^ " " (Display.string_of_exp e2) ^ ")")
-  | VFix (e1, e2, e3) -> "<fix>"
+(* functions for printing *)
+open Exps
+open List
 
 let string_of_op (op: bin_op) : string =
   match op with
@@ -22,58 +15,16 @@ let string_of_op (op: bin_op) : string =
   | OGreaterThan -> ">"
   | OEquals -> "="
 
-let string_of_token (t: token) : string =
+let rec string_of_type (t: typ) : string =
   match t with
-  | LPAREN -> "("
-  | RPAREN -> ")"
-  | PLUS   -> "+"
-  | MINUS  -> "-"
-  | TIMES  -> "*"
-  | DIVIDE -> "/"
-  | LEQ    -> "<="
-  | LSTHN  -> "<"
-  | GTTHN  -> ">"
-  | GEQ    -> ">="
-  | IF     -> "if"
-  | THEN   -> ""
-  | ELSE   -> ""
-  | LET    -> "let"
-  | EQUALS -> "="
-  | IN     -> "in"
-  | FUN    -> "fun"
-  | ARROW  -> "->"
-  | FIX    -> "fix"
-  | INT i  -> string_of_int i
-  | BOOL b -> string_of_bool b
-  | NAME s  -> s
-  | EOF    -> ""
-
-(* Copied from Matthias Braun at
- * https://stackoverflow.com/questions/9863036/ocaml-function-parameter-pattern-matching-for-strings *)
-let explode str =
-  let rec explode_inner cur_index chars =
-    if (cur_index < String.length str) then
-      let new_char = str.[cur_index] in
-      explode_inner (cur_index + 1) (chars @ [new_char])
-    else chars in
-      explode_inner 0 []
-
-let rec implode chars =
-  match chars with
-  | [] -> ""
-  | h :: t -> (Char.escaped h) ^ (implode t)
-(* End copied portion *)
-
-let string_of_token_list (tlist: token list) : string =
-  let rec process_token (so_far: string) (remaining: token list) : string =
-    match remaining with
-    | [] -> so_far ^ ""
-    | t :: rest -> process_token (so_far ^ (string_of_token t ) ^ ", ") rest
-    in
-    match explode (process_token "[" tlist) with
-    | '[' :: [] -> "[]"
-    | tstring -> (String.sub (implode tstring) 0
-      ((String.length (implode tstring)) - 2)) ^ "]"
+  | TInt -> "int"
+  | TBool -> "bool"
+  | TFun (t1, t2) -> ((string_of_type t1) ^ " -> " ^ (string_of_type t2))
+  | TUnit -> "unit"
+  | TTuple (t :: rest) -> ("(" ^ (string_of_type t) ^ (String.concat "" (map (fun x -> " * " ^ x) (map string_of_type rest)) ^ ")"))
+  | TList t -> ("[" ^ (string_of_type t) ^ "]")
+  | TRef t -> ("<" ^ (string_of_type t) ^ ">")
+  | TDynamic -> ("dynamic")
 
 let string_of_bin_op (op: bin_op) =
   match op with
@@ -87,16 +38,85 @@ let string_of_bin_op (op: bin_op) =
   | OGreaterThanEq -> ">="
   | OEquals -> "="
 
+let rec string_of_exp_parsed (e: exp) : string =
+  match e with
+  | EVal v -> string_of_value_parsed v
+  | EBinOp (op, exp1, exp2) ->
+    "(" ^ (string_of_bin_op op) ^ " " ^ (string_of_exp_parsed exp1) ^ " "
+      ^ (string_of_exp_parsed exp2) ^ ")"
+  | EIf (exp1, exp2, exp3) ->
+    "(if " ^ (string_of_exp_parsed exp1) ^ " " ^ (string_of_exp_parsed exp2) ^ " "
+      ^ (string_of_exp_parsed exp3) ^ ")"
+  | EVar s -> s
+  | ELet (expr1, expr2, expr3, t) -> ("(let " ^ (string_of_exp_parsed expr1)
+      ^ " : " ^ (string_of_type t) ^ " = "
+      ^ (string_of_exp_parsed expr2) ^ " in " ^ (string_of_exp_parsed expr3) ^ ")")
+  | EFunCall (expr1, expr2) -> ("(" ^ (string_of_exp_parsed expr1) ^ " "
+    ^ (string_of_exp_parsed expr2) ^ ")")
+  | EHead expr -> ("(head " ^ (string_of_exp_parsed expr) ^ ")")
+  | ETail expr -> ("(tail " ^ (string_of_exp_parsed expr) ^ ")")
+  | EEmpty expr -> ("(empty? " ^ (string_of_exp_parsed expr) ^ ")")
+  | ERef expr -> ("(ref " ^ (string_of_exp_parsed expr) ^ ")")
+  | EAssign (expr1, expr2) -> ("(:= " ^ (string_of_exp_parsed expr1) ^ " " ^ (string_of_exp_parsed expr2) ^ ")")
+  | EBang expr -> ("(! " ^ (string_of_exp_parsed expr) ^ ")")
+  | ESequence (expr1, expr2) -> ("(; " ^ (string_of_exp_parsed expr1) ^ " " ^ (string_of_exp_parsed expr2) ^ ")")
+  | EWhile (expr1, expr2, expr3) -> ("(while " ^ (string_of_exp_parsed expr1) ^ " " ^ (string_of_exp_parsed expr3) ^ ")")
+  | ENth (expr1, expr2) -> ("(nth " ^ (string_of_exp_parsed expr1) ^ " " ^ (string_of_exp_parsed expr2) ^ ")")
+  | EInferLet (e1, e2, e3) -> ("(let " ^ (string_of_exp_parsed e1)
+    ^ " = " ^ (string_of_exp_parsed e2) ^ " in " ^ (string_of_exp_parsed e3) ^ ")")
+and string_of_value_parsed (v: value) : string =
+  match v with
+  | VLit (LInt i) -> string_of_int i
+  | VLit (LBool b) -> string_of_bool b
+  | VFun (e1, e2, t1, t2) -> ("(fun (" ^ (string_of_exp_parsed e1) ^ ": "
+    ^ (string_of_type t1) ^ ") : " ^ (string_of_type t2) ^ " -> "
+    ^ (string_of_exp_parsed e2) ^ ")")
+  | VFix (e1, e2, e3, t1, t2) -> ("(fix " ^ (string_of_exp_parsed e1) ^ " ("
+    ^ (string_of_exp_parsed e2) ^ ": " ^ (string_of_type t1) ^ ") : "
+    ^ (string_of_type t2) ^ " -> " ^ (string_of_exp_parsed e3) ^ ")")
+  | VUnit -> "()"
+  | VTuple ([]) -> "()T"
+  | VTuple (e :: rest) -> ("(" ^ (string_of_exp_parsed e) ^ (String.concat "" (map (fun x -> ", " ^ x) (map string_of_exp_parsed rest))) ^ ")")
+  | VEmptyList t -> ("([] : " ^ (string_of_type t) ^ ")")
+  | VCons (e1, e2) -> ("(" ^ (string_of_exp_parsed e1) ^ " :: " ^ (string_of_exp_parsed e2) ^ ")")
+  | VPtr i -> ("(ptr, address: " ^ (string_of_int i) ^ ")")
+
 let rec string_of_exp (e: exp) : string =
   match e with
   | EVal v -> string_of_value v
-  | EBinOp (op, exp1, exp2) ->
-    "(" ^ (string_of_bin_op op) ^ " " ^ (string_of_exp exp1) ^ " "
-      ^ (string_of_exp exp2) ^ ")"
-  | EIf (exp1, exp2, exp3) ->
-    "(if (" ^ (string_of_exp exp1) ^ ") (" ^ (string_of_exp exp2) ^ ") ("
-      ^ (string_of_exp exp3) ^ "))"
+  | EBinOp (op, e1, e2) ->
+    ((string_of_exp e1) ^ " " ^ (string_of_bin_op op) ^ " " ^ (string_of_exp e2))
+  | EIf (e1, e2, e3) ->
+    ("if " ^ (string_of_exp e1) ^ " then " ^ (string_of_exp e2) ^ "\n    else "
+    ^ (string_of_exp e3))
   | EVar s -> s
-  | ELet (expr1, expr2, expr3) -> ("(let " ^ (string_of_exp expr1) ^ " = "
-    ^ (string_of_exp expr2) ^ " in (" ^ (string_of_exp expr3) ^ "))")
-  | EFunCall (expr1, expr2) -> ((string_of_exp expr1) ^ " " ^ (string_of_exp expr2))
+  | ELet (e1, e2, e3, t) ->
+    ("let " ^ (string_of_exp e1) ^ " : " ^ (string_of_type t) ^ " = "
+    ^ (string_of_exp e2) ^ " in\n    " ^ (string_of_exp e3))
+  | EFunCall (e1, e2) -> ((string_of_exp e1) ^ " " ^ (string_of_exp e2))
+  | EHead expr -> ("head " ^ (string_of_exp expr))
+  | ETail expr -> ("tail " ^ (string_of_exp expr))
+  | EEmpty expr -> ("empty? " ^ (string_of_exp expr))
+  | ERef expr -> ("ref " ^ (string_of_exp expr))
+  | EAssign (e1, e2) -> ((string_of_exp e1) ^ " := " ^ (string_of_exp e2))
+  | EBang e -> ("! " ^ (string_of_exp e))
+  | ESequence (e1, e2) -> ((string_of_exp e1) ^ "; " ^ (string_of_exp e2))
+  | EWhile (e1, e2, e3) -> ("while " ^ (string_of_exp e1) ^ " do " ^ (string_of_exp e3) ^ " end")
+  | ENth (e1, e2) -> ("nth " ^ (string_of_exp e1) ^ " " ^ (string_of_exp e2) ^ ")")
+  | EInferLet (e1, e2, e3) -> ("let " ^ (string_of_exp_parsed e1)
+    ^ " = " ^ (string_of_exp_parsed e2) ^ " in\n    " ^ (string_of_exp_parsed e3))
+and string_of_value (v: value) : string =
+  match v with
+  | VLit (LInt i) -> string_of_int i
+  | VLit (LBool b) -> string_of_bool b
+  | VFun (e1, e2, t1, t2) -> ("fun (" ^ (string_of_exp e1) ^ ": "
+    ^ (string_of_type t1) ^ ") : " ^ (string_of_type t2) ^ " -> " ^ (string_of_exp e2))
+  | VFix (e1, e2, e3, t1, t2) -> ("fix " ^ (string_of_exp e1) ^ " (" ^ (string_of_exp e2) ^ ": "
+    ^ (string_of_type t2) ^ ") : " ^ (string_of_type t2) ^ " -> "
+    ^ (string_of_exp e3))
+  | VUnit -> "()"
+  | VTuple ([]) -> "()T"
+  | VTuple (e :: rest) -> ("(" ^ (string_of_exp_parsed e) ^ (String.concat "" (map (fun x -> ", " ^ x) (map string_of_exp_parsed rest))) ^ ")")
+  | VEmptyList t -> ("[] : " ^ (string_of_type t))
+  | VCons (e1, e2) -> ((string_of_exp e1) ^ " :: " ^ (string_of_exp e2))
+  | VPtr i -> ("(ptr, address: " ^ (string_of_int i) ^ ")")

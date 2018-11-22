@@ -1,5 +1,6 @@
 %{
   open Lang
+  open Exps
 %}
 
 %token <int> INT
@@ -48,7 +49,7 @@
 
 %token EOF
 
-%start <Lang.exp> prog
+%start <Exps.exp> prog
 
 %left LET IN
 %left SEMI

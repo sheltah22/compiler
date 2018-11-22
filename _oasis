@@ -15,7 +15,7 @@ Executable "compiler"
 
 Library "lang"
   Path: src
-  Modules: Lang, Lexer, Parser
+  Modules: Lang, Lexer, Parser, Display, Exps
 
 Test "test-plus"
   TestTools: compiler
@@ -145,4 +145,3 @@ Test "test-fix-parse"
 Test "test-fix-multi-params-parse"
   TestTools: compiler
   Command: $compiler -parse tests/test-12.arith | diff tests/test-12.parse.out -
-
