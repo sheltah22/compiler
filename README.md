@@ -1,14 +1,17 @@
-# Compiler
+# Some Compiler
 #### Author: Shelby Frazier
 
 ## Overview
-This is a compiler for a toy language.
+This is a compiler for a toy languages whose features I have not fully decided on yet.
+
+## Language Specifications
+TBD.
 
 ## Building and Testing
 ### Setup Instructions
 You will need ocaml, opam and oasis installed to run the compiler.
 1. Install ocaml and opam using your preferred package manager.
-2. Then use opam to install oasis and menhir using `opam install oasis` and
+2. Use opam to install oasis and menhir using `opam install oasis` and
    `opam install menhir`.
 
 ### Build Instructions
