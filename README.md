@@ -5,7 +5,23 @@
 This is a compiler for a toy languages whose features I have not fully decided on yet.
 
 ## Language Specifications
-TBD.
+#### List of Features
+##### Types
+  - Integers (ex. `1`, `-12`)
+  - Functions (ex. `(fun (y:int) : int -> (y + 2))`)
+  - Unit type (ex. `()`)
+  - Tuples (ex. `(true, 1) : (bool * int)`)
+  - Lists (ex. `[], 2 :: 1 :: []`)
+  - Reference (ex. `(ref 100) : <int>`)
+
+##### Operations
+  - Basic Arithmetic: +, -, \*, / (ex. `1 + 1`)
+  - Integer Comparison: <, >, <=, >=, =
+      (ex. `if 8 < 2
+            then 10
+            else 11`)
+  - If statements: `if `
+
 
 ## Building and Testing
 ### Setup Instructions
