@@ -4,9 +4,8 @@
 ## Overview
 This is a compiler for a toy languages whose features I have not fully decided on yet.
 
-## Language Specifications
-#### List of Features
-##### Types
+## Current Language Specifications
+#### Types
   - Integers (ex. `1`, `-12`)
   - Functions (ex. `(fun (y:int) : int -> (y + 2))`)
   - Unit type (ex. `()`)
@@ -14,13 +13,26 @@ This is a compiler for a toy languages whose features I have not fully decided o
   - Lists (ex. `[], 2 :: 1 :: []`)
   - Reference (ex. `(ref 100) : <int>`)
 
-##### Operations
+#### Operations
   - Basic Arithmetic: +, -, \*, / (ex. `1 + 1`)
-  - Integer Comparison: <, >, <=, >=, =
-      (ex. `if 8 < 2
-            then 10
-            else 11`)
-  - If statements: `if `
+  - Integer Comparison: <, >, <=, >=, = \t (ex. `1 <= 1`)
+  - If statements: (ex. `if 0 = 0 then 10 else 11`)
+  - Let bindings: (ex. `let (x : int) = 1 in x + 1`)
+  - Function definitions: (ex. `fun (x : bool) : int -> if x then 1 else 0`)
+  - Recursive functions: (ex. `fix f (n : int) : int -> if n = 0 then 1 else n * f(n - 1)`)
+  - Function application: (ex. `(fun (x : bool) : int -> if x then 1 else 0) true`)
+  - Pair projection: (ex. `(1, 3, false)[1]`)
+  - Lists Operators:
+    + Cons: (ex. `1 :: 3 :: 5 :: []`)
+    + Head: (ex. `hd (1 :: 3 :: 5 :: []:int)`)
+    + Tail: (ex. `tl (1 :: 3 :: 5 :: []:int)`)
+    + Empty predicate: (`empty? []`)
+  - Stateful Operators:
+    + Creation: (ex. `let x : <int> = (ref 10)`)
+    + Assignment: (ex. `x := 10 + 2`) \* expression on right hand side is converted to a ref type, returns `()`
+    + Bang: retrieves value of reference (ex. `!x`)
+    + Sequencing operator: returns the value of the last expression (ex. `x := 10; !x` returns 10)
+    + While loop: (ex. `while (!x < 2) do x := !x + 1 end !x`)
 
 
 ## Building and Testing
