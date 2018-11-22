@@ -3,6 +3,7 @@ open Pervasives
 open Lexer
 open Parser
 open Lang
+open Display
 
 let arg_list =
   [ ("-parse",
