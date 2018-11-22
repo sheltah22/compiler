@@ -271,6 +271,7 @@ let rec step (env: (int * value) list) (e: exp) : (int * value) list * exp =
     begin
       match (step env (EVal (VTuple rest))) with
       | env', EVal (VTuple rest') -> (env', EVal (VTuple (ex :: rest')))
+      | _, _ -> failwith "Tuple didn't evaluate to a tuple"
     end
   | EVal (VCons (e1, e2)) ->
     let interp_e1 = not (is_value e1) in
@@ -480,8 +481,7 @@ let eval (expr: exp) : value =
     match (step env e) with
     | env', e' -> (eval' env' e')
     end in
-  let typechecks = typecheck [] expr in
-  exp_to_value (eval' [] expr)
+  typecheck [] expr; exp_to_value (eval' [] expr)
 
 let eval_print (expr: exp) : unit =
   let rec eval' (env: (int * value) list) (e: exp) : exp =
@@ -490,6 +490,6 @@ let eval_print (expr: exp) : unit =
       (let env', result = (step env e) in
       print_endline ("--> " ^ (string_of_exp result));
       (eval' env' result)) in
-  let typechecks = typecheck [] expr in
+  typecheck [] expr;
   print_endline ("    " ^ string_of_exp expr);
-  eval' [] expr; ();
+  eval' [] expr; ()

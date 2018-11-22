@@ -21,6 +21,7 @@ let rec string_of_type (t: typ) : string =
   | TBool -> "bool"
   | TFun (t1, t2) -> ((string_of_type t1) ^ " -> " ^ (string_of_type t2))
   | TUnit -> "unit"
+  | TTuple [] -> "()"
   | TTuple (t :: rest) -> ("(" ^ (string_of_type t) ^ (String.concat "" (map (fun x -> " * " ^ x) (map string_of_type rest)) ^ ")"))
   | TList t -> ("[" ^ (string_of_type t) ^ "]")
   | TRef t -> ("<" ^ (string_of_type t) ^ ">")
