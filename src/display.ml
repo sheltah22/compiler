@@ -81,6 +81,11 @@ and string_of_value_parsed (v: value) : string =
   | VEmptyList t -> ("([] : " ^ (string_of_type t) ^ ")")
   | VCons (e1, e2) -> ("(" ^ (string_of_exp_parsed e1) ^ " :: " ^ (string_of_exp_parsed e2) ^ ")")
   | VPtr i -> ("(ptr, address: " ^ (string_of_int i) ^ ")")
+  | VInferFun (e1, e2) -> ("(fun " ^ (string_of_exp_parsed e1) ^ " -> "
+    ^ (string_of_exp_parsed e2) ^ ")")
+  | VInferFix (e1, e2, e3) -> ("(fix " ^ (string_of_exp_parsed e1) ^ " "
+    ^ (string_of_exp_parsed e2) ^ " -> " ^ (string_of_exp_parsed e3) ^ ")")
+  | VInferEmptyList -> "[]"
 
 let rec string_of_exp (e: exp) : string =
   match e with

@@ -36,6 +36,9 @@ type value =
   | VEmptyList of typ
   | VCons of exp * exp
   | VPtr of int
+  | VInferFun of exp * exp
+  | VInferFix of exp * exp * exp
+  | VInferEmptyList
 and exp =
   | EVal of value
   | EBinOp of bin_op * exp * exp

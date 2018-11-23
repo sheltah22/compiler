@@ -126,10 +126,13 @@ ttyp:
 base_exp:
   | FUN LPAREN n=NAME COLON t1=typ RPAREN
     COLON t2=typ ARROW e=exp              { EVal (VFun (EVar n, e, t1, t2)) }
+  | FUN n=NAME ARROW e=exp                { EVal (VInferFun (EVar n, e)) }
   | FIX n1=NAME LPAREN n2=NAME COLON t1=typ RPAREN
     COLON t2=typ ARROW e=exp              { EVal (VFix (EVar n1, EVar n2, e, t1, t2)) }
+  | FIX n1=NAME  n2=NAME ARROW e=exp      { EVal (VInferFix (EVar n1, EVar n2, e)) }
   | e1=exp CONS e2=exp                    { EVal (VCons (e1, e2)) }
   | EMPTYLIST COLON t=typ                 { EVal (VEmptyList t) }
+  | EMPTYLIST                             { EVal VInferEmptyList }
   | i=INT                                 { EVal (VLit (LInt i)) }
   | b=BOOL                                { EVal (VLit (LBool b)) }
   | n=NAME                                { EVar n }
