@@ -1,0 +1,11 @@
+Test "test-infer-fun"
+  TestTools: compiler
+  Command: $compiler tests/test-24.arith | diff tests/test-24.out -
+
+Test "test-infer-fix"
+  TestTools: compiler
+  Command: $compiler tests/test-25.arith | diff tests/test-25.out -
+
+Test "test-infer-emptylist"
+  TestTools: compiler
+  Command: $compiler tests/test-26.arith | diff tests/test-26.out -

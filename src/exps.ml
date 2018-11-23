@@ -26,6 +26,7 @@ type typ =
   | TList of typ
   | TRef of typ
   | TDynamic
+  | TVar of string
 
 type value =
   | VLit of lit

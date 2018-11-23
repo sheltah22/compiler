@@ -4,6 +4,9 @@ open List
 open Exps
 open Display
 
+type constraint =
+  | CEquals of typ * typ
+
 let rec type_equals (t1: typ) (t2: typ) : bool =
   match t1, t2 with
   | TInt, TInt -> true
@@ -40,37 +43,41 @@ let exp_to_value (e: exp) : value =
   | EVal v -> v
   | _ -> failwith ("exp_to_value called with non-value expression: " ^ (string_of_exp e))
 
-let rec typecheck (ctx: (string * typ) list) (e: exp) : typ =
+let rec typecheck (ctx: (string * typ) list) (e: exp) (i: int) : typ * constraint list * i =
   match e with
   | ESequence (e1, e2) ->
-    (typecheck ctx e1); (typecheck ctx e2)
-  | EVal (VLit (LInt _)) -> TInt
-  | EVal (VLit (LBool _)) -> TBool
+    let (t1, cs1, i1) = (typecheck ctx e1 i) in
+    let (t2, cs2, i2) = (typecheck ctx e2 i1) in
+    (t2, cs1 @ cs2, i2)
+  | EVal (VLit (LInt _)) -> (TInt, i, [])
+  | EVal (VLit (LBool _)) -> (TBool, i, [])
   | EVal (VFun (EVar s, e', t1, t2)) ->
-    let e_type = typecheck (cons (s, t1) ctx) e' in
-    if type_equals e_type t2 then TFun (t1, t2)
+    let (cs, e_type, i1) = typecheck (cons (s, t1) ctx) e' i in
+    if type_equals e_type t2 then (TFun (t1, t2), (CEquals e_type t2) :: cs, i1)
     else failwith ("Function typechecking failed, expected return type: "
     ^ (string_of_type (TFun (t1, t2))) ^ ", actual: " ^ (string_of_type (TFun (t1, e_type))))
   | EVal (VFix (EVar f, EVar s, e, t1, t2)) ->
-    let e_type = typecheck (cons (f, TFun(t1,t2)) (cons (s, t1) ctx)) e in
-    if type_equals e_type t2 then TFun (t1, t2)
+    let (cs, e_type, i1) = typecheck (cons (f, TFun(t1,t2)) (cons (s, t1) ctx)) e i in
+    if type_equals e_type t2 then (TFun (t1, t2), (CEquals e_type t2) :: cs, i1)
     else failwith ("Fixpoint typechecking failed, expected return type: "
     ^ (string_of_type (TFun (t1, t2))) ^ ", actual: " ^ (string_of_type (TFun (t1, e_type))))
-  | EVal (VUnit) -> TUnit
-  | EVal (VTuple []) -> TTuple ([])
+  | EVal (VUnit) -> (TUnit, (), i)
+  | EVal (VTuple []) -> (TTuple ([]), [], i)
   | EVal (VTuple (ex :: rest)) ->
     begin
-      match (typecheck ctx (EVal (VTuple rest))) with
-      | TTuple (rest') -> (TTuple ((typecheck ctx ex) :: rest'))
+      match (typecheck ctx (EVal (VTuple rest)) i) with
+      | (TTuple rest', cs2, i1) ->
+        let (t1, cs1, i2) = (typecheck ctx ex i1) in
+        (TTuple (t1 :: rest'), cs1 @ cs2, i2)
       | _ -> failwith "Typechecking missed tuples"
     end
-  | EVal (VEmptyList t) -> TList t
+  | EVal (VEmptyList t) -> (TList t, [], i)
   | EVal (VCons (e1, e2)) ->
     begin
-    let e1_type = (typecheck ctx e1) in
-    let e2_type = (typecheck ctx e2) in
+    let (e1_type, cs1, i1) = (typecheck ctx e1 i) in
+    let (e2_type, cs2, i2) = (typecheck ctx e2 i1) in
     match e1_type, e2_type with
-    | t1, TList t2 -> (if (type_equals t1 t2) then TList t1
+    | t1, TList t2 -> (if (type_equals t1 t2) then (TList t1, (CEquals t1 t2) :: (cs1 @ cs2), i2)
       else failwith ("Cons typechecking failed, e1 should have type of contents"
       ^ " of e2, actual: " ^ (string_of_type e1_type) ^ ", " ^ (string_of_type e2_type)))
     | _ -> failwith ("Cons typechecking failed, e2 should have type list, "
@@ -79,37 +86,38 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) : typ =
   | EVal (VPtr i) -> failwith("Typechecking error: should not have encountered a pointer value")
   | EBinOp (op, e1, e2) ->
     let in_type = type_of_bin_op_in op in
-    let e1_type = typecheck ctx e1 in
-    let e2_type = typecheck ctx e2 in
-    if (type_equals e1_type in_type) && (type_equals e2_type in_type) then type_of_bin_op_out op
+    let (e1_type, cs1, i1) = typecheck ctx e1 i in
+    let (e2_type, cs2, i2) = typecheck ctx e2 i1 in
+    if (type_equals e1_type in_type) && (type_equals e2_type in_type)
+    then (type_of_bin_op_out op, (CEquals e1_type in_type) :: (CEquals e2_type in_type) :: (cs1 @ cs2), i2)
     else failwith ("Binary op typechecking failed, expected input type: "
     ^ (string_of_type in_type) ^ ", actual: " ^ (string_of_type e1_type)
     ^ " and " ^ (string_of_type e2_type))
   | EIf (e1, e2, e3) ->
-    let e1_type = typecheck ctx e1 in
-    let e2_type = typecheck ctx e2 in
-    let e3_type = typecheck ctx e3 in
+    let (e1_type, cs1, i1) = typecheck ctx e1 i in
+    let (e2_type, cs2, i2)  = typecheck ctx e2 i1 in
+    let (e3_type, cs3, i3) = typecheck ctx e3 i2 in
     if (type_equals e1_type TBool) && (type_equals e2_type e3_type)
-    then e2_type
+    then (e2_type, (CEquals e1_type TBool) :: (CEquals e2_type e3_type) :: (cs1 @ cs2 @ cs3), i3)
     else failwith
     ("If typechecking failed, expected format: if <bool> then <t> else <t>, "
     ^ "actual: " ^ (string_of_type e1_type) ^ ", " ^ (string_of_type e2_type)
     ^ ", " ^ (string_of_type e3_type))
-  | EVar s -> List.assoc s ctx
+  | EVar s -> (List.assoc s ctx, [], i)
   | ELet (EVar s, e1, e2, t) ->
-    let e1_type = typecheck ctx e1 in
-    let e2_type = typecheck (cons (s, t) ctx) e2 in
-    if (type_equals t e1_type) then e2_type
+    let (e1_type, cs1, i1) = typecheck ctx e1 i in
+    let (e2_type, cs2, i2) = typecheck (cons (s, t) ctx) e2 i1 in
+    if (type_equals t e1_type) then (e2_type, (CEquals t e1_type) :: cs1 @ cs2, i2)
     else failwith ("Let typechecking failed, expected binding type: "
     ^ (string_of_type t) ^ ", actual: " ^ (string_of_type e1_type))
   | EFunCall (e1, e2) ->
     begin
-    let e1_type = typecheck ctx e1 in
-    let e2_type = typecheck ctx e2 in
+    let (e1_type, cs1, i1) = typecheck ctx e1 i in
+    let (e2_type, cs2, i2) = typecheck ctx e2 i1 in
     match e1_type with
     | TFun (t1, t2) ->
       begin
-        if type_equals t1 e2_type then t2
+        if type_equals t1 e2_type then (t2, (CEquals t1 e2_type) :: cs1 @ cs2, i2)
         else failwith ("Fun call typechecking failed, expected input type: "
         ^ (string_of_type t1) ^ ", actual: " ^ (string_of_type e2_type) ^ (string_of_exp e1) ^ " " ^ (string_of_exp e2))
       end
@@ -118,35 +126,38 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) : typ =
     end
   | EHead ex ->
     begin
-    let e_type = (typecheck ctx ex) in
+    let (e_type, cs, i1) = typecheck ctx ex i in
     match e_type with
-    | TList t -> t
+    | TList t -> (t, cs, i1)
     | _ -> failwith ("Head typechecking failed, exp should be of type list, "
       ^ "actual: " ^ (string_of_type e_type))
     end
   | ETail ex ->
     begin
-    let e_type = (typecheck ctx ex) in
+    let (e_type, cs, i1) = typecheck ctx ex i in
     match e_type with
-    | TList t -> TList t
+    | TList t -> (TList t, cs, i1)
     | _ -> failwith ("Tail typechecking failed, exp should be of type list, "
       ^ "actual: " ^ (string_of_type e_type))
     end
   | EEmpty ex ->
     begin
-    let e_type = (typecheck ctx ex) in
+    let (e_type, cs, i1) = typecheck ctx ex i in
     match e_type with
-    | TList t -> TBool
+    | TList t -> (TBool, cs, i1)
     | _ -> failwith ("empty? typechecking failed, exp should be of type list, "
       ^ "actual: " ^ (string_of_type e_type))
     end
-  | ERef ex -> TRef (typecheck ctx ex)
+  | ERef ex ->
+    let (e_type, cs, i1) = typecheck ctx ex i in
+    (TRef e_type, cs, i1)
   | EAssign (e1, e2) ->
     begin
-    let e1_type = (typecheck ctx e1) in
-    let e2_type = (typecheck ctx e2) in
+    let (e1_type, cs1, i1) = typecheck ctx e1 i in
+    let (e2_type, cs2, i2) = typecheck ctx e2 i1 in
     match e1_type, e2_type with
-    | TRef t1, t2 -> if (type_equals t1 t2) then TUnit
+    | TRef t1, t2 -> if (type_equals t1 t2)
+      then (TUnit, (CEquals t1 t2) :: cs1 @ cs2, i2)
       else failwith ("Assignment typechecking failed, type of ref should be same as "
       ^ "type of value, actual: " ^ (string_of_type t1) ^ ", " ^ (string_of_type t2))
     | t, _ -> failwith ("Assignment typechecking failed, first value should "
@@ -154,32 +165,36 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) : typ =
     end
   | EBang ex ->
     begin
-    let e_type = (typecheck ctx ex) in
+    let (e_type, cs, i1) = typecheck ctx ex i in
     match e_type with
-    | TRef t -> t
+    | TRef t -> (t, cs, i1)
     | _ -> failwith ("Bang typechecking failed, should take ref type, actual "
       ^ (string_of_type e_type))
     end
   | EWhile (e1, e2, e3) ->
     begin
-    let e1_type = (typecheck ctx e1) in
+    let (e1_type, cs, i1) = typecheck ctx e1 i in
     match e1_type with
-    | TBool -> TUnit
+    | TBool -> (TUnit, cs, i1)
     | _ -> failwith ("While typechecking failed, e1 should be of type bool, "
       ^ "actual: " ^ (string_of_type e1_type))
     end
   | ENth (e1, e2) ->
-    if (not (type_equals (typecheck ctx e2) TInt)) then (failwith ("Nth typechecking failed, expects int type second"))
+    let (e2_type, cs1, i1) = typecheck ctx e2 i in
+    if (not (type_equals e2_type TInt)) then (failwith ("Nth typechecking failed, expects int type second"))
     else
+    let (e1_type, cs2, i2) = typecheck ctx e1 i1 in
     begin
-     match (typecheck ctx e1) with
-      | TTuple l -> (nth l (unpack_int_val (exp_to_value e2)))
+     match e1_type with
+      | TTuple l -> ((nth l (unpack_int_val (exp_to_value e2))),
+        (CEquals e2_type TInt) :: cs1 @ cs2, i2)
       | t -> failwith ("Nth typechecking failed, should take tuple first, "
         ^ "actual: " ^ (string_of_type t))
     end
   | EInferLet (EVar s, e1, e2) ->
-    let e1_type = typecheck ctx e1 in
-    let e2_type = typecheck (cons (s, e1_type) ctx) e2 in e2_type
+    let (e1_type, cs1, i1) = typecheck ctx e1 i in
+    let (e2_type, cs2, i2) = typecheck (cons (s, e1_type) ctx) e2 i1 in
+    (e2_type, cs1 @ cs2, i2)
   | _ -> failwith ("Typechecking failed, unrecognized formatting" ^ (string_of_exp e))
 
 let rec subst (v: value) (s: string) (e: exp) : exp =
