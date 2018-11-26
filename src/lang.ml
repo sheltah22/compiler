@@ -4,7 +4,7 @@ open List
 open Exps
 open Display
 
-type constraint =
+type constr =
   | CEquals of typ * typ
 
 let rec type_equals (t1: typ) (t2: typ) : bool =
@@ -43,25 +43,25 @@ let exp_to_value (e: exp) : value =
   | EVal v -> v
   | _ -> failwith ("exp_to_value called with non-value expression: " ^ (string_of_exp e))
 
-let rec typecheck (ctx: (string * typ) list) (e: exp) (i: int) : typ * constraint list * i =
+let rec typecheck (ctx: (string * typ) list) (e: exp) (i: int) : typ * constr list * int =
   match e with
   | ESequence (e1, e2) ->
     let (t1, cs1, i1) = (typecheck ctx e1 i) in
     let (t2, cs2, i2) = (typecheck ctx e2 i1) in
     (t2, cs1 @ cs2, i2)
-  | EVal (VLit (LInt _)) -> (TInt, i, [])
-  | EVal (VLit (LBool _)) -> (TBool, i, [])
+  | EVal (VLit (LInt _)) -> (TInt, [], i)
+  | EVal (VLit (LBool _)) -> (TBool, [], i)
   | EVal (VFun (EVar s, e', t1, t2)) ->
-    let (cs, e_type, i1) = typecheck (cons (s, t1) ctx) e' i in
-    if type_equals e_type t2 then (TFun (t1, t2), (CEquals e_type t2) :: cs, i1)
+    let (e_type, cs, i1) = typecheck (cons (s, t1) ctx) e' i in
+    if type_equals e_type t2 then (TFun (t1, t2), (CEquals (e_type, t2)) :: cs, i1)
     else failwith ("Function typechecking failed, expected return type: "
     ^ (string_of_type (TFun (t1, t2))) ^ ", actual: " ^ (string_of_type (TFun (t1, e_type))))
   | EVal (VFix (EVar f, EVar s, e, t1, t2)) ->
-    let (cs, e_type, i1) = typecheck (cons (f, TFun(t1,t2)) (cons (s, t1) ctx)) e i in
-    if type_equals e_type t2 then (TFun (t1, t2), (CEquals e_type t2) :: cs, i1)
+    let (e_type, cs, i1) = typecheck (cons (f, TFun (t1,t2)) (cons (s, t1) ctx)) e i in
+    if type_equals e_type t2 then (TFun (t1, t2), (CEquals (e_type, t2)) :: cs, i1)
     else failwith ("Fixpoint typechecking failed, expected return type: "
     ^ (string_of_type (TFun (t1, t2))) ^ ", actual: " ^ (string_of_type (TFun (t1, e_type))))
-  | EVal (VUnit) -> (TUnit, (), i)
+  | EVal (VUnit) -> (TUnit, [], i)
   | EVal (VTuple []) -> (TTuple ([]), [], i)
   | EVal (VTuple (ex :: rest)) ->
     begin
@@ -77,7 +77,7 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) (i: int) : typ * constrain
     let (e1_type, cs1, i1) = (typecheck ctx e1 i) in
     let (e2_type, cs2, i2) = (typecheck ctx e2 i1) in
     match e1_type, e2_type with
-    | t1, TList t2 -> (if (type_equals t1 t2) then (TList t1, (CEquals t1 t2) :: (cs1 @ cs2), i2)
+    | t1, TList t2 -> (if (type_equals t1 t2) then (TList t1, (CEquals (t1, t2)) :: (cs1 @ cs2), i2)
       else failwith ("Cons typechecking failed, e1 should have type of contents"
       ^ " of e2, actual: " ^ (string_of_type e1_type) ^ ", " ^ (string_of_type e2_type)))
     | _ -> failwith ("Cons typechecking failed, e2 should have type list, "
@@ -89,7 +89,7 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) (i: int) : typ * constrain
     let (e1_type, cs1, i1) = typecheck ctx e1 i in
     let (e2_type, cs2, i2) = typecheck ctx e2 i1 in
     if (type_equals e1_type in_type) && (type_equals e2_type in_type)
-    then (type_of_bin_op_out op, (CEquals e1_type in_type) :: (CEquals e2_type in_type) :: (cs1 @ cs2), i2)
+    then (type_of_bin_op_out op, (CEquals (e1_type, in_type)) :: (CEquals (e2_type, in_type)) :: (cs1 @ cs2), i2)
     else failwith ("Binary op typechecking failed, expected input type: "
     ^ (string_of_type in_type) ^ ", actual: " ^ (string_of_type e1_type)
     ^ " and " ^ (string_of_type e2_type))
@@ -98,7 +98,7 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) (i: int) : typ * constrain
     let (e2_type, cs2, i2)  = typecheck ctx e2 i1 in
     let (e3_type, cs3, i3) = typecheck ctx e3 i2 in
     if (type_equals e1_type TBool) && (type_equals e2_type e3_type)
-    then (e2_type, (CEquals e1_type TBool) :: (CEquals e2_type e3_type) :: (cs1 @ cs2 @ cs3), i3)
+    then (e2_type, (CEquals (e1_type, TBool)) :: (CEquals (e2_type, e3_type)) :: (cs1 @ cs2 @ cs3), i3)
     else failwith
     ("If typechecking failed, expected format: if <bool> then <t> else <t>, "
     ^ "actual: " ^ (string_of_type e1_type) ^ ", " ^ (string_of_type e2_type)
@@ -107,7 +107,7 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) (i: int) : typ * constrain
   | ELet (EVar s, e1, e2, t) ->
     let (e1_type, cs1, i1) = typecheck ctx e1 i in
     let (e2_type, cs2, i2) = typecheck (cons (s, t) ctx) e2 i1 in
-    if (type_equals t e1_type) then (e2_type, (CEquals t e1_type) :: cs1 @ cs2, i2)
+    if (type_equals t e1_type) then (e2_type, (CEquals (t, e1_type)) :: cs1 @ cs2, i2)
     else failwith ("Let typechecking failed, expected binding type: "
     ^ (string_of_type t) ^ ", actual: " ^ (string_of_type e1_type))
   | EFunCall (e1, e2) ->
@@ -117,7 +117,7 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) (i: int) : typ * constrain
     match e1_type with
     | TFun (t1, t2) ->
       begin
-        if type_equals t1 e2_type then (t2, (CEquals t1 e2_type) :: cs1 @ cs2, i2)
+        if type_equals t1 e2_type then (t2, (CEquals (t1, e2_type)) :: cs1 @ cs2, i2)
         else failwith ("Fun call typechecking failed, expected input type: "
         ^ (string_of_type t1) ^ ", actual: " ^ (string_of_type e2_type) ^ (string_of_exp e1) ^ " " ^ (string_of_exp e2))
       end
@@ -157,7 +157,7 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) (i: int) : typ * constrain
     let (e2_type, cs2, i2) = typecheck ctx e2 i1 in
     match e1_type, e2_type with
     | TRef t1, t2 -> if (type_equals t1 t2)
-      then (TUnit, (CEquals t1 t2) :: cs1 @ cs2, i2)
+      then (TUnit, (CEquals (t1, t2)) :: cs1 @ cs2, i2)
       else failwith ("Assignment typechecking failed, type of ref should be same as "
       ^ "type of value, actual: " ^ (string_of_type t1) ^ ", " ^ (string_of_type t2))
     | t, _ -> failwith ("Assignment typechecking failed, first value should "
@@ -187,7 +187,7 @@ let rec typecheck (ctx: (string * typ) list) (e: exp) (i: int) : typ * constrain
     begin
      match e1_type with
       | TTuple l -> ((nth l (unpack_int_val (exp_to_value e2))),
-        (CEquals e2_type TInt) :: cs1 @ cs2, i2)
+        (CEquals (e2_type, TInt)) :: cs1 @ cs2, i2)
       | t -> failwith ("Nth typechecking failed, should take tuple first, "
         ^ "actual: " ^ (string_of_type t))
     end
@@ -496,7 +496,7 @@ let eval (expr: exp) : value =
     match (step env e) with
     | env', e' -> (eval' env' e')
     end in
-  typecheck [] expr; exp_to_value (eval' [] expr)
+  typecheck [] expr 0; exp_to_value (eval' [] expr)
 
 let eval_print (expr: exp) : unit =
   let rec eval' (env: (int * value) list) (e: exp) : exp =
@@ -505,6 +505,6 @@ let eval_print (expr: exp) : unit =
       (let env', result = (step env e) in
       print_endline ("--> " ^ (string_of_exp result));
       (eval' env' result)) in
-  typecheck [] expr;
+  typecheck [] expr 0;
   print_endline ("    " ^ string_of_exp expr);
   eval' [] expr; ()

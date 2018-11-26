@@ -25,7 +25,8 @@ let rec string_of_type (t: typ) : string =
   | TTuple (t :: rest) -> ("(" ^ (string_of_type t) ^ (String.concat "" (map (fun x -> " * " ^ x) (map string_of_type rest)) ^ ")"))
   | TList t -> ("[" ^ (string_of_type t) ^ "]")
   | TRef t -> ("<" ^ (string_of_type t) ^ ">")
-  | TDynamic -> ("dynamic")
+  | TDynamic -> "dynamic"
+  | TVar s -> s
 
 let string_of_bin_op (op: bin_op) =
   match op with
@@ -126,3 +127,7 @@ and string_of_value (v: value) : string =
   | VEmptyList t -> ("[] : " ^ (string_of_type t))
   | VCons (e1, e2) -> ((string_of_exp e1) ^ " :: " ^ (string_of_exp e2))
   | VPtr i -> ("(ptr, address: " ^ (string_of_int i) ^ ")")
+  | VInferFun (e1, e2) -> ("fun " ^ (string_of_exp e1) ^ " -> " ^ (string_of_exp e2))
+  | VInferFix (e1, e2, e3) -> ("fix " ^ (string_of_exp e1) ^ " " ^ (string_of_exp e2)
+                              ^ " -> " ^ (string_of_exp e3))
+  | VInferEmptyList -> "[]"
